@@ -1,0 +1,5 @@
+# production environment variables
+.env.production
+
+# vercel
+.vercel

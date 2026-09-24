@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  --font-horror: 'Creepster', cursive;
+  --font-cinzel: 'Cinzel', serif;
+  --font-sans: 'Outfit', sans-serif;
+  --font-glitch: 'Rubik Glitch', cursive;
+
+  --color-halloween-orange: #ff5400;
+  --color-halloween-amber: #ff8500;
+  --color-blood-red: #e11d48;
+  --color-dark-blood: #881337;
+  --color-spooky-black: #09090c;
+  --color-spooky-card: #121218;
+  --color-spooky-border: #22222e;
+}
+
+/* Custom Scrollbar for horizontal carousels and page */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090c;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #272733;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ff5400;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Atmospheric Halloween glows */
+.glow-orange {
+  box-shadow: 0 0 25px -5px rgba(255, 84, 0, 0.4);
+}
+
+.glow-orange-lg {
+  box-shadow: 0 0 45px -5px rgba(255, 84, 0, 0.55);
+}
+
+.glow-red {
+  box-shadow: 0 0 25px -5px rgba(225, 29, 72, 0.4);
+}
+
+.text-glow-orange {
+  text-shadow: 0 0 15px rgba(255, 84, 0, 0.6), 0 0 30px rgba(255, 84, 0, 0.3);
+}
+
+.text-glow-red {
+  text-shadow: 0 0 15px rgba(225, 29, 72, 0.6), 0 0 30px rgba(225, 29, 72, 0.3);
+}
+
+/* Giant hollow outline numbers for Screambox Top 10 */
+.top-number-outline {
+  -webkit-text-stroke: 3px #ff5400;
+  color: transparent;
+  text-shadow: 0 0 20px rgba(255, 84, 0, 0.4);
+}
+
+.top-number-outline-red {
+  -webkit-text-stroke: 3px #e11d48;
+  color: transparent;
+  text-shadow: 0 0 20px rgba(225, 29, 72, 0.4);
+}
+
+/* Subtle bat / fog animation */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+.animate-float {
+  animation: floatSlow 6s ease-in-out infinite;
+}

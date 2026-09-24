@@ -1,0 +1,32 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Secretos — nunca commitear
+.env
+
+# Datos y resultados
+data/
+runs/
+*.parquet
+*.csv
+!tests/fixtures/*.csv
+*.db
+*.db-wal
+*.db-shm
+
+# Tooling
+CLAUDE.md
+.claude/settings.local.json
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.vscode/
+.idea/
+
+web/node_modules/

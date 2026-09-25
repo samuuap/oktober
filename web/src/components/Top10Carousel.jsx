@@ -5,8 +5,9 @@ import { ChevronLeft, ChevronRight, Flame } from 'lucide-react'
 export const Top10Carousel = ({ movies, onSelectMovie }) => {
   const scrollRef = useRef(null)
 
-  // Sort top 10 movies by vote average / vote count
-  const top10 = movies.slice(0, 10)
+  const top10 = [...movies]
+    .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
+    .slice(0, 10)
 
   if (!top10 || top10.length === 0) return null
 

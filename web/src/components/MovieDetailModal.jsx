@@ -1,9 +1,16 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { X, Star, Clock, Calendar, Heart, Tv, ShoppingCart, Film, Skull } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export const MovieDetailModal = ({ movie, onClose }) => {
   const { isWatchlisted, toggleWatchlist } = useAuth()
+
+  useEffect(() => {
+    if (!movie) return
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [movie, onClose])
 
   if (!movie) return null
 
@@ -72,9 +79,6 @@ export const MovieDetailModal = ({ movie, onClose }) => {
           <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="bg-[#ff5400] text-black text-[10px] font-black uppercase px-2 py-0.5 rounded">
-                  TMDB {movie.tmdb_id}
-                </span>
                 {movie.year && (
                   <span className="text-gray-300 text-xs font-semibold">
                     {movie.year}

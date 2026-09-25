@@ -1,19 +1,26 @@
 import React, { useState } from 'react'
 import { Skull, Droplet, Brain, Zap, TrendingUp, Ghost, Swords, Film } from 'lucide-react'
 
-export const OnboardingStep1 = ({ onNext }) => {
+// Punto de partida cuando alguien entra por primera vez
+const DEFAULT_PREFERENCES = {
+  gore: 5,
+  slasher: 5,
+  psicologico: 5,
+  jump_scares: 5,
+  terror: 5,
+  tension: 5,
+  sobrenatural: 5,
+  body_horror: 5,
+  atmosfera: 5,
+  humor: 3,
+  popularity: 7  // Preferencia por películas populares vs oscuras
+}
+
+export const OnboardingStep1 = ({ onNext, initialPreferences }) => {
+  // Si ya hizo el onboarding antes, arrancamos con sus valores
   const [preferences, setPreferences] = useState({
-    gore: 5,
-    slasher: 5,
-    psicologico: 5,
-    jump_scares: 5,
-    terror: 5,
-    tension: 5,
-    sobrenatural: 5,
-    body_horror: 5,
-    atmosfera: 5,
-    humor: 3,
-    popularity: 7  // Preferencia por películas populares vs oscuras
+    ...DEFAULT_PREFERENCES,
+    ...(initialPreferences || {})
   })
 
   const handleSliderChange = (key, value) => {
@@ -198,10 +205,7 @@ export const OnboardingStep1 = ({ onNext }) => {
         </p>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => setPreferences({
-              ...preferences,
-              popularity: 9
-            })}
+            onClick={() => setPreferences({ ...preferences, popularity: 9 })}
             className={`p-4 rounded-xl border-2 transition-all ${
               preferences.popularity >= 8
                 ? 'border-amber-500 bg-amber-500/10'
@@ -218,10 +222,7 @@ export const OnboardingStep1 = ({ onNext }) => {
           </button>
 
           <button
-            onClick={() => setPreferences({
-              ...preferences,
-              popularity: 3
-            })}
+            onClick={() => setPreferences({ ...preferences, popularity: 3 })}
             className={`p-4 rounded-xl border-2 transition-all ${
               preferences.popularity <= 4
                 ? 'border-purple-500 bg-purple-500/10'

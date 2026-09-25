@@ -3,3 +3,6 @@
 
 # vercel
 .vercel
+
+# local env
+.env

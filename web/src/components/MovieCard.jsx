@@ -2,7 +2,7 @@ import React from 'react'
 import { Star, Heart, Tv } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
-export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
+export const MovieCard = ({ movie, onSelect, rankNumber = null, gridView = false }) => {
   const { isWatchlisted, toggleWatchlist } = useAuth()
   const inWatchlist = isWatchlisted(movie.tmdb_id)
 
@@ -23,10 +23,10 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
   return (
     <div
       onClick={() => onSelect(movie)}
-      className="group relative flex-shrink-0 cursor-pointer transition-transform duration-300 hover:scale-[1.03] select-none"
+      className={`group relative cursor-pointer transition-transform duration-300 hover:scale-[1.03] select-none ${gridView ? 'w-full' : 'flex-shrink-0'}`}
     >
       {/* Poster Container */}
-      <div className="relative aspect-[2/3] w-40 sm:w-48 rounded-2xl overflow-hidden bg-[#161620] border border-gray-800/80 group-hover:border-[#ff5400]/70 group-hover:shadow-[0_0_25px_rgba(255,84,0,0.4)] transition-all">
+      <div className={`relative aspect-[2/3] rounded-2xl overflow-hidden bg-[#161620] border border-gray-800/80 group-hover:border-[#ff5400]/70 group-hover:shadow-[0_0_25px_rgba(255,84,0,0.4)] transition-all ${gridView ? 'w-full' : 'w-40 sm:w-48'}`}>
         
         {/* Poster Image */}
         <img

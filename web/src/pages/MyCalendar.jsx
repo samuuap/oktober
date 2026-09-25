@@ -1,72 +1,111 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Calendar, Loader, Sparkles, Edit3, Save, X } from 'lucide-react'
+import { generateCalendar } from '../lib/calendarGenerator'
+import { MoviePickerModal } from '../components/MoviePickerModal'
+import {
+  Calendar,
+  Loader,
+  Sparkles,
+  Repeat,
+  Star,
+  Eye,
+  Clock,
+  SlidersHorizontal,
+  Shuffle,
+  Lock
+} from 'lucide-react'
 
-export const MyCalendar = ({ onSelectMovie }) => {
+const MOVIE_FIELDS =
+  'tmdb_id, title, original_title, overview, poster_path, backdrop_path, year, runtime, vote_average, vote_count, genres, characteristics, watch_providers'
+
+export const MyCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenOnboarding }) => {
   const { user, userProfile, hasCompletedOnboarding } = useAuth()
+
   const [calendar, setCalendar] = useState(null)
-  const [calendarDays, setCalendarDays] = useState([])
+  const [days, setDays] = useState([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState(null)
+  const [pickerDay, setPickerDay] = useState(null)
 
-  useEffect(() => {
-    if (user) {
-      fetchMyCalendar()
+  const year = new Date().getFullYear()
+
+  // ----------------------------------------------------------
+  // Carga
+  // ----------------------------------------------------------
+
+  const loadCalendar = useCallback(async () => {
+    if (!user) {
+      setLoading(false)
+      return
     }
-  }, [user])
 
-  const fetchMyCalendar = async () => {
+    setLoading(true)
     try {
-      setLoading(true)
-
-      // Fetch user's calendar for 2024
-      const { data: calendarData, error: calError } = await supabase
+      const { data: calendarRow, error: calendarError } = await supabase
         .from('user_calendars')
         .select('*')
         .eq('user_id', user.id)
-        .eq('year', 2024)
-        .single()
+        .eq('year', year)
+        .maybeSingle()
 
-      if (calError && calError.code !== 'PGRST116') {
-        throw calError
+      if (calendarError) throw calendarError
+
+      setCalendar(calendarRow || null)
+
+      if (!calendarRow) {
+        setDays([])
+        return
       }
 
-      if (calendarData) {
-        setCalendar(calendarData)
+      const { data: dayRows, error: daysError } = await supabase
+        .from('calendar_days')
+        .select(`id, day_number, tmdb_id, watched, rating, watched_at, movies:tmdb_id (${MOVIE_FIELDS})`)
+        .eq('calendar_id', calendarRow.id)
+        .order('day_number', { ascending: true })
 
-        // Fetch calendar days with movie data
-        const { data: daysData, error: daysError } = await supabase
-          .from('calendar_days')
-          .select(`
-            *,
-            movies:tmdb_id (
-              tmdb_id,
-              title,
-              poster_path,
-              vote_average,
-              year
-            )
-          `)
-          .eq('calendar_id', calendarData.id)
-          .order('day_number', { ascending: true })
+      if (daysError) throw daysError
 
-        if (daysError) throw daysError
-
-        setCalendarDays(daysData || [])
-      }
+      setDays(dayRows || [])
     } catch (err) {
-      console.error('Error fetching calendar:', err)
-      setError('Error cargando calendario')
+      console.error('Error cargando el calendario personal:', err)
+      setError('No se pudo cargar tu calendario')
     } finally {
       setLoading(false)
     }
+  }, [user?.id, year])
+
+  useEffect(() => {
+    loadCalendar()
+  }, [loadCalendar])
+
+  // ----------------------------------------------------------
+  // Generar / regenerar
+  // ----------------------------------------------------------
+
+  // Intenta la Edge Function y, si no está desplegada o falla,
+  // usa el mismo algoritmo en el navegador.
+  const buildPlan = async () => {
+    try {
+      const { data, error: functionError } = await supabase.functions.invoke('generate-calendar')
+      if (!functionError && data?.success && data.calendar?.length === 31) {
+        return data.calendar.map((entry) => ({
+          day_number: entry.day_number,
+          tmdb_id: entry.tmdb_id
+        }))
+      }
+    } catch (err) {
+      console.warn('Edge Function no disponible, generando en local:', err)
+    }
+
+    const local = generateCalendar(movies, userProfile)
+    return local.map((entry) => ({ day_number: entry.day_number, tmdb_id: entry.tmdb_id }))
   }
 
-  const generateCalendar = async () => {
+  const handleGenerate = async ({ regenerate = false } = {}) => {
     if (!hasCompletedOnboarding) {
-      setError('Completa el onboarding primero')
+      setError('Primero cuéntanos tus gustos en el onboarding')
       return
     }
 
@@ -74,291 +113,432 @@ export const MyCalendar = ({ onSelectMovie }) => {
     setError(null)
 
     try {
-      // Call Edge Function to generate calendar
-      const { data: { session } } = await supabase.auth.getSession()
+      const plan = await buildPlan()
 
-      const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/generate-calendar`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      )
-
-      const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.error || 'Error generando calendario')
+      if (plan.length < 31) {
+        throw new Error('No hay películas analizadas suficientes para llenar el mes')
       }
 
-      // Create calendar in DB
-      const slug = `${userProfile.username}-octubre-2024`
+      let calendarId = calendar?.id
 
-      const { data: newCalendar, error: calError } = await supabase
-        .from('user_calendars')
-        .insert({
-          user_id: user.id,
-          year: 2024,
-          slug: slug,
-          title: 'Mi Octubre 2024',
-          is_public: true
-        })
-        .select()
-        .single()
+      if (!calendarId) {
+        const username = userProfile?.username || user.email?.split('@')[0] || 'anon'
+        const { data: created, error: createError } = await supabase
+          .from('user_calendars')
+          .insert({
+            user_id: user.id,
+            year,
+            slug: `${username}-octubre-${year}`,
+            title: `Mi Octubre ${year}`,
+            is_public: true
+          })
+          .select()
+          .single()
 
-      if (calError) throw calError
+        if (createError) throw createError
+        calendarId = created.id
+        setCalendar(created)
+      } else if (regenerate) {
+        const { error: deleteError } = await supabase
+          .from('calendar_days')
+          .delete()
+          .eq('calendar_id', calendarId)
 
-      // Insert 31 days
-      const days = result.calendar.map(day => ({
-        calendar_id: newCalendar.id,
-        day_number: day.day_number,
-        tmdb_id: day.tmdb_id,
-        watched: false
-      }))
+        if (deleteError) throw deleteError
+      }
 
-      const { error: daysError } = await supabase
+      const { error: insertError } = await supabase
         .from('calendar_days')
-        .insert(days)
+        .insert(plan.map((entry) => ({ ...entry, calendar_id: calendarId, watched: false })))
 
-      if (daysError) throw daysError
+      if (insertError) throw insertError
 
-      // Reload calendar
-      await fetchMyCalendar()
+      await loadCalendar()
     } catch (err) {
-      console.error('Error generating calendar:', err)
-      setError(err.message || 'Error generando calendario')
+      console.error('Error generando el calendario:', err)
+      setError(err.message || 'No se pudo generar el calendario')
     } finally {
       setGenerating(false)
     }
   }
 
-  const toggleWatched = async (dayId, currentWatched) => {
+  // ----------------------------------------------------------
+  // Edición
+  // ----------------------------------------------------------
+
+  const swapMovie = async (movie) => {
+    const day = pickerDay
+    setPickerDay(null)
+
     try {
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('calendar_days')
-        .update({
-          watched: !currentWatched,
-          watched_at: !currentWatched ? new Date().toISOString() : null
-        })
-        .eq('id', dayId)
+        .update({ tmdb_id: movie.tmdb_id, watched: false, rating: null, watched_at: null })
+        .eq('id', day.id)
 
-      if (error) throw error
+      if (updateError) throw updateError
 
-      // Update local state
-      setCalendarDays(prev =>
-        prev.map(day =>
-          day.id === dayId
-            ? { ...day, watched: !currentWatched, watched_at: !currentWatched ? new Date().toISOString() : null }
-            : day
+      setDays((prev) =>
+        prev.map((item) =>
+          item.id === day.id
+            ? { ...item, tmdb_id: movie.tmdb_id, movies: movie, watched: false, rating: null, watched_at: null }
+            : item
         )
       )
     } catch (err) {
-      console.error('Error updating watched:', err)
+      console.error('Error cambiando la película:', err)
+      setError('No se pudo cambiar la película de ese día')
     }
   }
 
-  const updateRating = async (dayId, rating) => {
-    try {
-      const { error } = await supabase
-        .from('calendar_days')
-        .update({ rating })
-        .eq('id', dayId)
+  const toggleWatched = async (day) => {
+    const watched = !day.watched
+    const watchedAt = watched ? new Date().toISOString() : null
 
-      if (error) throw error
-
-      // Update local state
-      setCalendarDays(prev =>
-        prev.map(day =>
-          day.id === dayId
-            ? { ...day, rating }
-            : day
-        )
+    setDays((prev) =>
+      prev.map((item) =>
+        item.id === day.id ? { ...item, watched, watched_at: watchedAt } : item
       )
-    } catch (err) {
-      console.error('Error updating rating:', err)
-    }
+    )
+
+    const { error: updateError } = await supabase
+      .from('calendar_days')
+      .update({ watched, watched_at: watchedAt })
+      .eq('id', day.id)
+
+    if (updateError) console.error('Error marcando como vista:', updateError)
   }
+
+  const setRating = async (day, rating) => {
+    const value = day.rating === rating ? null : rating
+
+    setDays((prev) =>
+      prev.map((item) => (item.id === day.id ? { ...item, rating: value } : item))
+    )
+
+    const { error: updateError } = await supabase
+      .from('calendar_days')
+      .update({ rating: value })
+      .eq('id', day.id)
+
+    if (updateError) console.error('Error guardando la nota:', updateError)
+  }
+
+  // ----------------------------------------------------------
+  // Derivados
+  // ----------------------------------------------------------
+
+  const stats = useMemo(() => {
+    const watched = days.filter((day) => day.watched)
+    const minutes = watched.reduce((total, day) => total + (day.movies?.runtime || 0), 0)
+    const rated = watched.filter((day) => day.rating)
+    const average = rated.length
+      ? rated.reduce((total, day) => total + day.rating, 0) / rated.length
+      : null
+
+    return { watched: watched.length, minutes, average }
+  }, [days])
+
+  const usedIds = useMemo(() => days.map((day) => day.tmdb_id), [days])
+
+  // ----------------------------------------------------------
+  // Render
+  // ----------------------------------------------------------
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <p className="text-gray-400">Inicia sesión para crear tu calendario</p>
-        </div>
-      </div>
+      <EmptyState
+        icon={<Lock className="w-8 h-8 text-[#ff5400]" />}
+        title="Tu calendario te espera"
+        description="Crea una cuenta y te montamos un octubre entero a tu medida, editable película a película."
+        actionLabel="Entrar o registrarse"
+        onAction={onRequireAuth}
+      />
     )
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center py-40">
         <Loader className="w-12 h-12 text-[#ff5400] animate-spin" />
       </div>
     )
   }
 
-  // No calendar yet - show generate
-  if (!calendar) {
+  if (!hasCompletedOnboarding) {
     return (
-      <div className="min-h-screen bg-[#09090c] py-16">
-        <div className="max-w-2xl mx-auto px-4 text-center space-y-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#ff5400]/10 border-2 border-[#ff5400]/40">
-            <Calendar className="w-10 h-10 text-[#ff5400]" />
+      <EmptyState
+        icon={<SlidersHorizontal className="w-8 h-8 text-[#ff5400]" />}
+        title="Primero, tus gustos"
+        description="Contesta un par de preguntas sobre qué terror te va y con eso construimos tu calendario. Puedes cambiarlas cuando quieras."
+        actionLabel="Empezar onboarding"
+        onAction={onOpenOnboarding}
+      />
+    )
+  }
+
+  if (!calendar || days.length === 0) {
+    return (
+      <div className="py-20">
+        <div className="max-w-xl mx-auto px-4 text-center space-y-7">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#ff5400]/10 border-2 border-[#ff5400]/40">
+            <Calendar className="w-8 h-8 text-[#ff5400]" />
           </div>
 
-          <div className="space-y-4">
-            <h1 className="text-4xl font-black uppercase tracking-wider text-white">
-              Tu Calendario Personal
+          <div className="space-y-3">
+            <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white">
+              Tu Octubre, a tu medida
             </h1>
-            <p className="text-base text-gray-400 max-w-lg mx-auto">
-              Genera un calendario de 31 películas personalizado según tus gustos. Progresión de intensidad ideal para octubre.
+            <p className="text-sm text-gray-400">
+              31 películas elegidas según tu perfil, con la intensidad subiendo hasta Halloween.
+              Después podrás cambiar los días que no te convenzan.
             </p>
           </div>
 
-          {!hasCompletedOnboarding ? (
-            <div className="bg-amber-500/10 border border-amber-500/40 p-6 rounded-xl">
-              <p className="text-amber-400 text-sm">
-                ⚠️ Completa el onboarding primero para generar tu calendario personalizado
-              </p>
-            </div>
-          ) : (
-            <button
-              onClick={generateCalendar}
-              disabled={generating}
-              className="inline-flex items-center gap-3 px-8 py-4 bg-[#ff5400] hover:bg-[#ff6a1a] text-black font-black uppercase tracking-wider rounded-xl transition-all shadow-lg disabled:opacity-50"
-            >
-              {generating ? (
-                <>
-                  <Loader className="w-5 h-5 animate-spin" />
-                  Generando...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  Generar Mi Calendario
-                </>
-              )}
-            </button>
-          )}
+          <button
+            onClick={() => handleGenerate()}
+            disabled={generating}
+            className="inline-flex items-center gap-3 px-8 py-4 bg-[#ff5400] hover:bg-[#ff6a1a] text-black font-black uppercase tracking-wider rounded-xl transition-all shadow-lg disabled:opacity-50 cursor-pointer"
+          >
+            {generating ? (
+              <><Loader className="w-5 h-5 animate-spin" /> Generando…</>
+            ) : (
+              <><Sparkles className="w-5 h-5" /> Generar mi calendario</>
+            )}
+          </button>
+
+          <button
+            onClick={onOpenOnboarding}
+            className="block mx-auto text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-[#ff5400] transition-colors cursor-pointer"
+          >
+            Revisar mis gustos antes
+          </button>
 
           {error && (
-            <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/40 px-4 py-3 rounded-lg">
+            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/40 px-4 py-3 rounded-xl">
               {error}
-            </div>
+            </p>
           )}
         </div>
       </div>
     )
   }
 
-  // Show calendar grid
   return (
-    <div className="min-h-screen bg-[#09090c] py-8">
-      {/* Header */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-black uppercase tracking-wider text-white">
-            {calendar.title}
-          </h1>
-          <p className="text-sm text-gray-400">
-            Tu calendario personalizado · {calendarDays.filter(d => d.watched).length}/31 vistas
+    <div className="py-10">
+      {/* Cabecera */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-[#ff5400] font-bold">
+              Calendario personal
+            </p>
+            <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white leading-none">
+              {calendar.title}
+            </h1>
+            <p className="text-sm text-gray-500">
+              Cámbialo a tu gusto: toca “Cambiar” en cualquier día para buscar otra película.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={onOpenOnboarding}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#16161f] border border-gray-800 text-gray-300 text-xs font-bold uppercase tracking-wider rounded-xl hover:border-[#ff5400]/60 hover:text-white transition-all cursor-pointer"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Mis gustos
+            </button>
+
+            <button
+              onClick={() => {
+                if (window.confirm('Se sustituirán las 31 películas y perderás las notas y marcas de vista. ¿Seguimos?')) {
+                  handleGenerate({ regenerate: true })
+                }
+              }}
+              disabled={generating}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#16161f] border border-gray-800 text-gray-300 text-xs font-bold uppercase tracking-wider rounded-xl hover:border-[#ff5400]/60 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {generating ? <Loader className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
+              Regenerar
+            </button>
+          </div>
+        </div>
+
+        {/* Estadísticas */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard icon={<Eye className="w-4 h-4" />} label="Vistas" value={`${stats.watched}/31`} />
+          <StatCard
+            icon={<Clock className="w-4 h-4" />}
+            label="Tiempo"
+            value={`${Math.floor(stats.minutes / 60)}h ${stats.minutes % 60}m`}
+          />
+          <StatCard
+            icon={<Star className="w-4 h-4" />}
+            label="Tu nota media"
+            value={stats.average ? stats.average.toFixed(1) : '—'}
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/40 px-4 py-3 rounded-xl">
+            {error}
+          </p>
+        )}
+      </div>
+
+      {/* Rejilla */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4">
+          {days.map((day) => (
+            <DayCard
+              key={day.id}
+              day={day}
+              onOpenDetail={() => day.movies && onSelectMovie(day.movies)}
+              onSwap={() => setPickerDay(day)}
+              onToggleWatched={() => toggleWatched(day)}
+              onRate={(value) => setRating(day, value)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <MoviePickerModal
+        isOpen={pickerDay !== null}
+        dayNumber={pickerDay?.day_number}
+        movies={movies}
+        excludeIds={usedIds}
+        onPick={swapMovie}
+        onClose={() => setPickerDay(null)}
+      />
+    </div>
+  )
+}
+
+// ------------------------------------------------------------
+// Subcomponentes
+// ------------------------------------------------------------
+
+const StatCard = ({ icon, label, value }) => (
+  <div className="bg-[#12121a] border border-gray-800 rounded-2xl px-4 py-3 flex items-center gap-3">
+    <div className="w-9 h-9 rounded-xl bg-[#ff5400]/10 border border-[#ff5400]/30 text-[#ff5400] flex items-center justify-center flex-shrink-0">
+      {icon}
+    </div>
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold truncate">{label}</p>
+      <p className="text-base font-black text-white leading-tight">{value}</p>
+    </div>
+  </div>
+)
+
+const DayCard = ({ day, onOpenDetail, onSwap, onToggleWatched, onRate }) => {
+  const movie = day.movies
+
+  return (
+    <div
+      className={`group relative rounded-xl overflow-hidden border-2 transition-all ${
+        day.watched ? 'border-emerald-600/70' : 'border-gray-800 hover:border-[#ff5400]/70'
+      }`}
+    >
+      <div className="relative aspect-[2/3]">
+        <button onClick={onOpenDetail} className="w-full h-full cursor-pointer">
+          {movie?.poster_path ? (
+            <img
+              src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+              alt={movie.title}
+              loading="lazy"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-[#181822]" />
+          )}
+        </button>
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent opacity-85 pointer-events-none" />
+
+        <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm px-2 py-0.5 rounded-lg border border-[#ff5400]/60">
+          <span className="text-xs font-black text-[#ff5400]">{day.day_number}</span>
+        </div>
+
+        <button
+          onClick={onSwap}
+          title="Cambiar película"
+          className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/75 border border-gray-700 text-gray-300 hover:text-black hover:bg-[#ff5400] hover:border-[#ff5400] transition-all cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
+        >
+          <Shuffle className="w-3.5 h-3.5" />
+        </button>
+
+        <div className="absolute bottom-0 inset-x-0 p-2 pointer-events-none">
+          <h3 className="text-[11px] font-bold text-white line-clamp-2 leading-tight">
+            {movie?.title || 'Sin asignar'}
+          </h3>
+          <p className="text-[10px] text-gray-400">
+            {[movie?.year, movie?.runtime ? `${movie.runtime}m` : null].filter(Boolean).join(' · ')}
           </p>
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
-          {calendarDays.map((day) => {
-            const movie = day.movies
-
-            return (
-              <CalendarDayCard
-                key={day.id}
-                day={day}
-                movie={movie}
-                onToggleWatched={() => toggleWatched(day.id, day.watched)}
-                onUpdateRating={(rating) => updateRating(day.id, rating)}
-                onSelectMovie={() => onSelectMovie?.(movie)}
-              />
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Calendar Day Card Component
-const CalendarDayCard = ({ day, movie, onToggleWatched, onUpdateRating, onSelectMovie }) => {
-  const posterUrl = movie?.poster_path
-    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-    : 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&w=500&q=80'
-
-  return (
-    <div className="group relative aspect-[2/3] rounded-xl overflow-hidden border-2 border-gray-800 hover:border-[#ff5400] transition-all">
-      {/* Day Number Badge */}
-      <div className="absolute top-2 left-2 z-20 bg-black/80 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-[#ff5400]/60">
-        <span className="text-sm font-black text-[#ff5400]">
-          {day.day_number}
-        </span>
-      </div>
-
-      {/* Watched Badge */}
-      {day.watched && (
-        <div className="absolute top-2 right-2 z-20 bg-green-500 p-1.5 rounded-lg">
-          <span className="text-xs">✓</span>
-        </div>
-      )}
-
-      {/* Poster */}
-      <button onClick={onSelectMovie} className="w-full h-full">
-        <img
-          src={posterUrl}
-          alt={movie?.title || `Día ${day.day_number}`}
-          className="w-full h-full object-cover"
-        />
-      </button>
-
-      {/* Overlay with controls */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
-
-      {/* Bottom controls */}
-      <div className="absolute bottom-0 inset-x-0 p-3 space-y-2">
-        <h3 className="text-xs font-bold text-white line-clamp-2">
-          {movie?.title || 'TBD'}
-        </h3>
-
-        {/* Watched checkbox */}
+      {/* Controles */}
+      <div className="bg-[#0f0f16] p-2 space-y-1.5">
         <button
           onClick={onToggleWatched}
-          className={`w-full py-1.5 text-xs font-bold rounded transition-all ${
+          className={`w-full py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
             day.watched
-              ? 'bg-green-500 text-white'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-[#1b1b26] text-gray-400 hover:text-white hover:bg-[#25253355]'
           }`}
         >
-          {day.watched ? 'Vista' : 'Marcar vista'}
+          {day.watched ? '✓ Vista' : 'Marcar vista'}
         </button>
 
-        {/* Rating stars */}
         {day.watched && (
-          <div className="flex gap-1 justify-center">
-            {[1, 2, 3, 4, 5].map(star => (
+          <div className="flex justify-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
-                onClick={() => onUpdateRating(star)}
-                className="text-lg transition-transform hover:scale-125"
+                onClick={() => onRate(star)}
+                className="text-[11px] leading-none hover:scale-125 transition-transform cursor-pointer"
+                title={`${star} de 5`}
               >
-                {star <= (day.rating || 0) ? '⭐' : '☆'}
+                <Star
+                  className={`w-3.5 h-3.5 ${
+                    star <= (day.rating || 0)
+                      ? 'text-amber-400 fill-amber-400'
+                      : 'text-gray-700'
+                  }`}
+                />
               </button>
             ))}
           </div>
         )}
+
+        <button
+          onClick={onSwap}
+          className="w-full py-1 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-[#ff5400] transition-colors cursor-pointer"
+        >
+          Cambiar
+        </button>
       </div>
     </div>
   )
 }
+
+const EmptyState = ({ icon, title, description, actionLabel, onAction }) => (
+  <div className="py-24">
+    <div className="max-w-md mx-auto px-4 text-center space-y-6">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#ff5400]/10 border-2 border-[#ff5400]/40">
+        {icon}
+      </div>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-black uppercase tracking-wider text-white">{title}</h1>
+        <p className="text-sm text-gray-400">{description}</p>
+      </div>
+      <button
+        onClick={onAction}
+        className="px-7 py-3.5 bg-[#ff5400] hover:bg-[#ff6a1a] text-black font-black uppercase tracking-wider text-sm rounded-xl transition-all cursor-pointer"
+      >
+        {actionLabel}
+      </button>
+    </div>
+  </div>
+)

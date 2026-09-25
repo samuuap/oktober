@@ -146,11 +146,22 @@ export const CountdownWidget = () => {
 
         </div>
 
-        {/* Bottom Subtitle Date */}
-        <div className="text-center mt-6 relative z-10">
+        {/* Sound Toggle + Subtitle */}
+        <div className="text-center mt-6 relative z-10 flex items-center justify-center gap-4">
           <span className="text-sm font-medium text-gray-400 tracking-wide">
             31 de Octubre • La Noche Más Oscura
           </span>
+          <button
+            onClick={toggleSound}
+            title={soundEnabled ? 'Silenciar ambiente' : 'Activar sonido ambiente'}
+            className={`p-2 rounded-xl border transition-all cursor-pointer ${
+              soundEnabled
+                ? 'bg-[#ff5400]/20 border-[#ff5400]/60 text-[#ff5400]'
+                : 'bg-black/40 border-gray-700 text-gray-500 hover:text-[#ff5400] hover:border-[#ff5400]/40'
+            }`}
+          >
+            {soundEnabled ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
         </div>
 
       </div>

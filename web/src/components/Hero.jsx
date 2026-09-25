@@ -1,15 +1,25 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Play, Info, Heart, Star, Clock, ChevronLeft, ChevronRight, Flame } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export const Hero = ({ movies, onSelectMovie }) => {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [paused, setPaused] = useState(false)
   const { isWatchlisted, toggleWatchlist } = useAuth()
+  const intervalRef = useRef(null)
 
   // Pick top 5 featured horror films (with backdrops and high votes)
   const featuredList = movies
     .filter((m) => m.backdrop_path && m.poster_path)
     .slice(0, 5)
+
+  useEffect(() => {
+    if (paused || !featuredList.length) return
+    intervalRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % featuredList.length)
+    }, 5000)
+    return () => clearInterval(intervalRef.current)
+  }, [paused, featuredList.length])
 
   if (!featuredList || featuredList.length === 0) return null
 
@@ -31,13 +41,16 @@ export const Hero = ({ movies, onSelectMovie }) => {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
 
-  // TMDB backdrop URL
   const backdropUrl = currentMovie.backdrop_path
-    ? `https://image.tmdb.org/t/p/original${currentMovie.backdrop_path}`
+    ? `https://image.tmdb.org/t/p/w1280${currentMovie.backdrop_path}`
     : ''
 
   return (
-    <div className="relative w-full min-h-[600px] sm:min-h-[680px] lg:min-h-[740px] flex items-center overflow-hidden bg-[#09090c]">
+    <div
+      className="relative w-full min-h-[600px] sm:min-h-[680px] lg:min-h-[740px] flex items-center overflow-hidden bg-[#09090c]"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       
       {/* Cinematic Full-Bleed Backdrop */}
       {backdropUrl && (

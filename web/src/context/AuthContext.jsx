@@ -130,6 +130,18 @@ export const AuthProvider = ({ children }) => {
     return watchlist.includes(tmdbId)
   }
 
+  // user_profiles.username es NOT NULL UNIQUE. Quien entra con Google
+  // nunca pasa por el formulario de registro, así que si todavía no hay
+  // perfil le fabricamos uno a partir del email.
+  const buildFallbackUsername = () => {
+    const base = (user.user_metadata?.full_name || user.email?.split('@')[0] || 'cazador')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '')
+      .slice(0, 15)
+
+    return `${base || 'cazador'}-${user.id.slice(0, 4)}`
+  }
+
   const saveUserProfile = async (profileData) => {
     if (!user) throw new Error('No user logged in')
 
@@ -137,6 +149,7 @@ export const AuthProvider = ({ children }) => {
       .from('user_profiles')
       .upsert({
         user_id: user.id,
+        username: userProfile?.username || buildFallbackUsername(),
         ...profileData,
         updated_at: new Date().toISOString()
       })

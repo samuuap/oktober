@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { Heart, Loader } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-export const OnboardingStep2 = ({ preferences, onNext, onBack }) => {
+export const OnboardingStep2 = ({ preferences, onNext, onBack, initialLiked }) => {
   const [movies, setMovies] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState([])
+  const [selected, setSelected] = useState(initialLiked || [])
 
   useEffect(() => {
     fetchFilteredMovies()
@@ -49,7 +49,7 @@ export const OnboardingStep2 = ({ preferences, onNext, onBack }) => {
           .select('tmdb_id, title, poster_path, characteristics, vote_average, popularity')
           .not('tmdb_id', 'in', `(${representativeMovies.join(',')})`)
           .not('characteristics', 'is', null)
-          .order('popularity', { ascending: false })
+          .order('popularity', { ascending: false, nullsFirst: false })
           .limit(15 - (data || []).length)
 
         setMovies([...(data || []), ...(additionalData || [])])

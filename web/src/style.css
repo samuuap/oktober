@@ -90,3 +90,34 @@
 .animate-float {
   animation: floatSlow 6s ease-in-out infinite;
 }
+
+/* Entrada suave para modales y menús */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.22s ease-out;
+}
+
+/* La puerta se resiste cuando fallas la prueba */
+@keyframes shake {
+  0%, 100%     { transform: translateX(0); }
+  15%, 45%, 75% { transform: translateX(-7px); }
+  30%, 60%, 90% { transform: translateX(7px); }
+}
+
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* Revelación de la película tras superar la prueba */
+@keyframes reveal {
+  from { opacity: 0; transform: scale(0.94); filter: blur(8px); }
+  to   { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+.animate-reveal {
+  animation: reveal 0.55s ease-out;
+}

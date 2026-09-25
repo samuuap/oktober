@@ -1,5 +1,9 @@
 import os
-import json
+import sys
+import time
+from datetime import date
+
+import requests
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -17,51 +21,196 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+# Solo hace falta para rescatar películas que no están en el catálogo
+# (el importador únicamente trajo género Terror con +1000 votos).
+TMDB_TOKEN = os.getenv("TMDB_TOKEN")
+TMDB_BASE_URL = "https://api.themoviedb.org/3"
+WATCH_PROVIDER_COUNTRY = "ES"
+
 # ============================================================
-# CALENDARIO OFICIAL OKTOBER 2024
+# CALENDARIO OFICIAL OKTOBER
 # ============================================================
 
-# 31 películas curadas manualmente para octubre 2024
-# Progresión: suave → medio → intenso hacia Halloween
+# El año se pasa por argumento:  python populate_official_calendar.py 2026
+# Por defecto se publica el del año en curso, que es el que busca la web.
+TARGET_YEAR = int(sys.argv[1]) if len(sys.argv) > 1 else date.today().year
 
-CALENDAR_2024 = [
-    # Días 1-10: Intro suave, clásicos accesibles
-    {"day": 1, "tmdb_id": 4488, "theme": "Intro suave", "note": "Friday the 13th - Clásico slasher para arrancar"},
-    {"day": 2, "tmdb_id": 539, "theme": "Tensión", "note": "Psycho - Hitchcock maestro del suspense"},
-    {"day": 3, "tmdb_id": 694, "theme": "Supernatural", "note": "The Shining - Kubrick icónico"},
-    {"day": 4, "tmdb_id": 745, "theme": "Terror italiano", "note": "Suspiria (1977) - Giallo colorido"},
-    {"day": 5, "tmdb_id": 346, "theme": "Found footage", "note": "The Blair Witch Project - Pionero"},
-    {"day": 6, "tmdb_id": 4995, "theme": "J-Horror", "note": "Ringu - Terror japonés"},
-    {"day": 7, "tmdb_id": 4348, "theme": "Vampiros", "note": "Let the Right One In - Poético"},
-    {"day": 8, "tmdb_id": 2667, "theme": "Zombies", "note": "28 Days Later - Infectados rápidos"},
-    {"day": 9, "tmdb_id": 482, "theme": "Slasher", "note": "A Nightmare on Elm Street - Freddy Krueger"},
-    {"day": 10, "tmdb_id": 424, "theme": "Scream meta", "note": "Scream - Horror con humor"},
+# 31 películas curadas manualmente para octubre de 2026.
+# Progresión: entrada accesible → desgaste psicológico → carnicería →
+# estrenos del año → respiro final la noche de Halloween.
+#
+# `theme` es lo ÚNICO que se ve en la puerta sellada ("Pista: ..."),
+# así que sugiere sin cantar el título y se queda corto (cabe en una línea).
+# `note` es editorial interna: no se pinta en ningún sitio.
 
-    # Días 11-20: Escalando intensidad, horror moderno
-    {"day": 11, "tmdb_id": 340666, "theme": "Sobrenatural", "note": "The Conjuring - James Wan"},
-    {"day": 12, "tmdb_id": 138843, "theme": "Posesión", "note": "The Conjuring 2 - Valak"},
-    {"day": 13, "tmdb_id": 270303, "theme": "Paranormal", "note": "Insidious - Viaje astral"},
-    {"day": 14, "tmdb_id": 126125, "theme": "Terror familiar", "note": "Sinister - Snuff films"},
-    {"day": 15, "tmdb_id": 332562, "theme": "Moderno", "note": "A Quiet Place - Silencio tenso"},
-    {"day": 16, "tmdb_id": 419430, "theme": "Folclore", "note": "Get Out - Terror social"},
-    {"day": 17, "tmdb_id": 530385, "theme": "Cult", "note": "Midsommar - Horror diurno"},
-    {"day": 18, "tmdb_id": 423108, "theme": "Hereditario", "note": "Hereditary - Trauma familiar"},
-    {"day": 19, "tmdb_id": 760104, "theme": "Folk horror", "note": "X - Ti West slasher"},
-    {"day": 20, "tmdb_id": 646385, "theme": "Scream sequel", "note": "Scream (2022) - Requel"},
+CALENDAR = [
+    # Días 1-7: entrada en calor. Terror de premisa, más tensión que sangre.
+    {"day": 1,  "tmdb_id": 2675,    "title": "Señales (2002)",
+     "theme": "Invasión",            "note": "Signs - Shyamalan: el miedo empieza en el maizal de casa"},
+    {"day": 2,  "tmdb_id": 1246049, "title": "Drácula (2025)",
+     "theme": "Colmillos",           "note": "Dracula (Besson) - relectura romántica del conde"},
+    {"day": 3,  "tmdb_id": 21208,   "title": "La huérfana (2009)",
+     "theme": "Thriller doméstico",  "note": "Orphan - el giro más sucio del cine de adopción"},
+    {"day": 4,  "tmdb_id": 333371,  "title": "Calle Cloverfield 10 (2016)",
+     "theme": "Encierro",            "note": "10 Cloverfield Lane - búnker, paranoia y Goodman"},
+    {"day": 5,  "tmdb_id": 1138194, "title": "Heretic (2024)",
+     "theme": "Fe a prueba",         "note": "Heretic - Hugh Grant como el anfitrión equivocado"},
+    {"day": 6,  "tmdb_id": 44214,   "title": "Cisne negro (2010)",
+     "theme": "Psicológico",         "note": "Black Swan - la perfección como enfermedad"},
+    {"day": 7,  "tmdb_id": 381283,  "title": "Madre! (2017)",
+     "theme": "Alegoría",            "note": "mother! - Aronofsky y la casa que no deja de llenarse"},
 
-    # Días 21-31: Máxima intensidad hacia Halloween
-    {"day": 21, "tmdb_id": 454626, "theme": "Sonic terror", "note": "Smile - Entidad maldita"},
-    {"day": 22, "tmdb_id": 663712, "theme": "Slasher extremo", "note": "Terrifier 2 - Art the Clown"},
-    {"day": 23, "tmdb_id": 630586, "theme": "Gore", "note": "The Sadness - Virus rabia extremo"},
-    {"day": 24, "tmdb_id": 419704, "theme": "Meta horror", "note": "Last Night in Soho - Psych twist"},
-    {"day": 25, "tmdb_id": 632632, "theme": "Body horror", "note": "The Substance - Demi Moore"},
-    {"day": 26, "tmdb_id": 758323, "theme": "Survival", "note": "The Pope's Exorcist - Russell Crowe"},
-    {"day": 27, "tmdb_id": 938614, "theme": "Slasher", "note": "Scream VI - NYC matanza"},
-    {"day": 28, "tmdb_id": 646097, "theme": "Evil", "note": "Evil Dead Rise - Cronenberg vibes"},
-    {"day": 29, "tmdb_id": 807172, "theme": "Posesión", "note": "The Exorcist: Believer"},
-    {"day": 30, "tmdb_id": 285, "theme": "Clásico", "note": "Halloween (1978) - Noche previa"},
-    {"day": 31, "tmdb_id": 346, "theme": "Halloween night", "note": "Trick 'r Treat - Antología perfecta"}
+    # Días 8-12: el bloque duro. Crueldad, trampas y carne.
+    {"day": 8,  "tmdb_id": 10234,   "title": "Funny Games (1997)",
+     "theme": "Home invasion",       "note": "Funny Games - Haneke: violencia sin coartada para el espectador"},
+    {"day": 9,  "tmdb_id": 176,     "title": "Saw (2004)",
+     "theme": "Trampas",             "note": "Saw - el baño original, el origen de todo"},
+    {"day": 10, "tmdb_id": 951491,  "title": "Saw X (2023)",
+     "theme": "Venganza",            "note": "Saw X - Kramer en México, la mejor de la saga moderna"},
+    {"day": 11, "tmdb_id": 9539,    "title": "Mártires (2008)",
+     "theme": "Extremo francés",     "note": "Martyrs - la cumbre del New French Extremity. Aviso: dura"},
+    {"day": 12, "tmdb_id": 933260,  "title": "La sustancia (2024)",
+     "theme": "Body horror",         "note": "The Substance - otra versión de ti, mejor en todo"},
+
+    # Días 13-17: bicho suelto. Vampiros, alienígenas e infección.
+    {"day": 13, "tmdb_id": 36647,   "title": "Blade (1998)",
+     "theme": "Acción vampírica",    "note": "Blade - respiro de adrenalina a mitad de mes"},
+    {"day": 14, "tmdb_id": 348,     "title": "Alien: El octavo pasajero (1979)",
+     "theme": "Terror espacial",     "note": "Alien - Ridley Scott, el clásico intocable"},
+    {"day": 15, "tmdb_id": 1576,    "title": "Resident Evil (2002)",
+     "theme": "Survival horror",     "note": "Resident Evil - la Colmena y el traje rojo"},
+    {"day": 16, "tmdb_id": 395992,  "title": "Life / Vida (2017)",
+     "theme": "Criatura",            "note": "Life - Calvin suelto a bordo de la ISS"},
+    {"day": 17, "tmdb_id": 72190,   "title": "Guerra Mundial Z (2013)",
+     "theme": "Zombis",              "note": "World War Z - la epidemia a escala de blockbuster"},
+
+    # Días 18-23: autor y atmósfera. Menos sangre, más inquietud.
+    {"day": 18, "tmdb_id": 1078605, "title": "Weapons (2025)",
+     "theme": "Misterio de pueblo",  "note": "Weapons - Zach Cregger: diecisiete niños y las 2:17"},
+    {"day": 19, "tmdb_id": 576845,  "title": "Última noche en el Soho (2021)",
+     "theme": "Fantasmas del pasado","note": "Last Night in Soho - Edgar Wright y el Londres de los 60"},
+    {"day": 20, "tmdb_id": 593643,  "title": "El menú (2022)",
+     "theme": "Sátira",              "note": "The Menu - alta cocina como ritual"},
+    {"day": 21, "tmdb_id": 949423,  "title": "Pearl (2022)",
+     "theme": "Technicolor",         "note": "Pearl - Mia Goth y el monólogo final"},
+    {"day": 22, "tmdb_id": 399366,  "title": "El secreto de Marrowbone (2017)",
+     "theme": "Gótico español",      "note": "Marrowbone - casa heredada y secreto familiar"},
+    {"day": 23, "tmdb_id": 2668,    "title": "Sleepy Hollow (1999)",
+     "theme": "Leyenda",             "note": "Sleepy Hollow - gótico de niebla y guillotina"},
+
+    # Días 24-30: la recta final con los estrenos recientes.
+    {"day": 24, "tmdb_id": 574475,  "title": "Destino final: Lazos de sangre (2025)",
+     "theme": "Accidentes",          "note": "Final Destination Bloodlines - la muerte cobra la deuda"},
+    {"day": 25, "tmdb_id": 1100988, "title": "28 años después (2025)",
+     "theme": "Infectados",          "note": "28 Years Later - Boyle vuelve a la isla"},
+    {"day": 26, "tmdb_id": 1083381, "title": "Backrooms (2026)",
+     "theme": "Espacios liminales",  "note": "Backrooms - pasillos infinitos, terror liminal"},
+    {"day": 27, "tmdb_id": 1212763, "title": "Posesión infernal: En llamas (2026)",
+     "theme": "Libro maldito",       "note": "Evil Dead Burn - nueva entrega del Necronomicón"},
+    {"day": 28, "tmdb_id": 1304313, "title": "La momia de Lee Cronin (2026)",
+     "theme": "Maldición antigua",   "note": "Lee Cronin's The Mummy - el director de Evil Dead Rise"},
+    {"day": 29, "tmdb_id": 1339713, "title": "Obsession (2026)",
+     "theme": "Hechizo",             "note": "Obsession - el amor platónico como maldición"},
+    {"day": 30, "tmdb_id": 1233413, "title": "Los pecadores (2025)",
+     "theme": "Blues y sangre",      "note": "Sinners - Coogler y el Misisipi de 1932"},
+
+    # Día 31: la noche. Se baja el pulso y se cierra el mes en fiesta.
+    {"day": 31, "tmdb_id": 9479,    "title": "Pesadilla antes de Navidad (1993)",
+     "theme": "Stop-motion",         "note": "The Nightmare Before Christmas - el puente entre las dos fiestas"},
 ]
+
+# ============================================================
+# RESCATE DE PELÍCULAS FUERA DE CATÁLOGO
+# ============================================================
+
+# official_calendar.tmdb_id tiene FK a movies(tmdb_id): si la película no
+# está en la tabla, el día se quedaría sin puerta. Le pasa al 31 (Pesadilla
+# antes de Navidad no es género Terror, así que el importador la saltó).
+
+
+def tmdb_get(endpoint, params=None):
+    response = requests.get(
+        f"{TMDB_BASE_URL}{endpoint}",
+        headers={
+            "Authorization": f"Bearer {TMDB_TOKEN}",
+            "accept": "application/json"
+        },
+        params=params or {},
+        timeout=20
+    )
+    response.raise_for_status()
+    time.sleep(0.15)
+    return response.json()
+
+
+def fetch_watch_providers(tmdb_id):
+    """Plataformas en España. Mismo formato que import_movies.py."""
+
+    country = (
+        tmdb_get(f"/movie/{tmdb_id}/watch/providers")
+        .get("results", {})
+        .get(WATCH_PROVIDER_COUNTRY, {})
+    )
+
+    def extract(category):
+        return [
+            {
+                "provider_id": provider.get("provider_id"),
+                "provider_name": provider.get("provider_name"),
+                "logo_path": provider.get("logo_path")
+            }
+            for provider in country.get(category, [])
+        ]
+
+    return {
+        "flatrate": extract("flatrate"),
+        "rent": extract("rent"),
+        "buy": extract("buy")
+    }
+
+
+def import_missing_movie(tmdb_id):
+    """Trae una película suelta de TMDB y la mete en `movies`."""
+
+    if not TMDB_TOKEN:
+        raise RuntimeError(
+            "no está en el catálogo y falta TMDB_TOKEN en .env para traerla"
+        )
+
+    movie = tmdb_get(f"/movie/{tmdb_id}", {"language": "es-ES"})
+
+    release_date = movie.get("release_date") or None
+    try:
+        year = int(release_date[:4]) if release_date else None
+    except (ValueError, TypeError):
+        year = None
+
+    supabase.table("movies").upsert(
+        {
+            "tmdb_id": movie["id"],
+            "title": movie.get("title"),
+            "original_title": movie.get("original_title"),
+            "overview": movie.get("overview"),
+            "release_date": release_date,
+            "year": year,
+            "runtime": movie.get("runtime"),
+            "poster_path": movie.get("poster_path"),
+            "backdrop_path": movie.get("backdrop_path"),
+            "original_language": movie.get("original_language"),
+            "genres": [
+                {"id": genre.get("id"), "name": genre.get("name")}
+                for genre in movie.get("genres", [])
+            ],
+            "watch_providers": fetch_watch_providers(tmdb_id),
+            "popularity": movie.get("popularity"),
+            "vote_average": movie.get("vote_average"),
+            "vote_count": movie.get("vote_count")
+        },
+        on_conflict="tmdb_id"
+    ).execute()
+
+    return movie.get("title")
+
 
 # ============================================================
 # POBLAR CALENDARIO
@@ -69,10 +218,12 @@ CALENDAR_2024 = [
 
 def populate_calendar():
     print("=" * 60)
-    print("OKTOBER - POBLANDO CALENDARIO OFICIAL 2024")
+    print(f"OKTOBER - POBLANDO CALENDARIO OFICIAL {TARGET_YEAR}")
     print("=" * 60)
 
-    for entry in CALENDAR_2024:
+    errors = 0
+
+    for entry in CALENDAR:
         try:
             # Verificar que película existe en DB
             movie_check = (
@@ -83,34 +234,45 @@ def populate_calendar():
                 .execute()
             )
 
-            if not movie_check.data:
-                print(f"⚠️  Día {entry['day']}: Película TMDB {entry['tmdb_id']} no encontrada en DB")
-                continue
-
-            movie_title = movie_check.data[0].get("title", "?")
+            if movie_check.data:
+                movie_title = movie_check.data[0].get("title", "?")
+            else:
+                # Fuera de catálogo: la traemos antes de sellar la puerta,
+                # si no la FK de official_calendar rechazaría el día.
+                movie_title = import_missing_movie(entry["tmdb_id"]) or entry["title"]
+                print(f"   ↳ importada de TMDB: {movie_title}")
 
             # Insertar/actualizar en calendario oficial
-            result = (
+            (
                 supabase
                 .table("official_calendar")
-                .upsert({
-                    "day_number": entry["day"],
-                    "tmdb_id": entry["tmdb_id"],
-                    "theme": entry.get("theme"),
-                    "note": entry.get("note"),
-                    "year": 2024
-                })
+                .upsert(
+                    {
+                        "day_number": entry["day"],
+                        "tmdb_id": entry["tmdb_id"],
+                        "theme": entry.get("theme"),
+                        "note": entry.get("note"),
+                        "year": TARGET_YEAR
+                    },
+                    # Sin esto, relanzar el script choca con UNIQUE(day_number, year)
+                    on_conflict="day_number,year"
+                )
                 .execute()
             )
 
             print(f"✅ Día {entry['day']:2d}: {movie_title} ({entry['theme']})")
 
         except Exception as error:
-            print(f"❌ Error día {entry['day']}: {error}")
+            errors += 1
+            print(f"❌ Día {entry['day']:2d} ({entry['title']}): {error}")
 
     print("\n" + "=" * 60)
-    print("[OK] CALENDARIO OFICIAL 2024 POBLADO")
+    if errors:
+        print(f"[!] CALENDARIO {TARGET_YEAR}: {31 - errors}/31 días publicados, {errors} con error")
+    else:
+        print(f"[OK] CALENDARIO OFICIAL {TARGET_YEAR} POBLADO - 31/31 días")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     populate_calendar()

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Play, Info, Heart, Star, Clock, ChevronLeft, ChevronRight, Flame } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -9,9 +9,11 @@ export const Hero = ({ movies, onSelectMovie }) => {
   const intervalRef = useRef(null)
 
   // Pick top 5 featured horror films (with backdrops and high votes)
-  const featuredList = movies
-    .filter((m) => m.backdrop_path && m.poster_path)
-    .slice(0, 5)
+  // Se recalculaba en cada rotación del carrusel, cinco veces por minuto.
+  const featuredList = useMemo(
+    () => movies.filter((m) => m.backdrop_path && m.poster_path).slice(0, 5),
+    [movies]
+  )
 
   useEffect(() => {
     if (paused || !featuredList.length) return

@@ -19,6 +19,7 @@ export const Navbar = ({
     { id: 'official', label: 'Calendario Oficial 🎃' },
     { id: 'mine', label: 'Mi Calendario', requireAuth: true },
     { id: 'explore', label: 'Explorar' },
+    { id: 'inspiration', label: 'Inspiración' },
     { id: 'admin', label: 'Admin', requireAdmin: true }
   ]
 

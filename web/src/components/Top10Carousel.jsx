@@ -1,13 +1,16 @@
-import React, { useRef } from 'react'
+import React, { useRef, useMemo } from 'react'
 import { MovieCard } from './MovieCard'
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react'
 
 export const Top10Carousel = ({ movies, onSelectMovie }) => {
   const scrollRef = useRef(null)
 
-  const top10 = [...movies]
-    .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
-    .slice(0, 10)
+  // Ordenar 738 películas en cada render no hacía falta: solo cambia
+  // cuando cambia el catálogo.
+  const top10 = useMemo(
+    () => [...movies].sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0)).slice(0, 10),
+    [movies]
+  )
 
   if (!top10 || top10.length === 0) return null
 

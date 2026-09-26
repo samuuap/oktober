@@ -5,17 +5,28 @@
 // ============================================================
 
 // Las 10 categorías que puntúa la IA (analyze_movies.py)
+// `label` es el nombre del rasgo (filtros, etiquetas). `ask` es ese mismo
+// rasgo convertido en pregunta, para las pruebas del calendario.
+//
+// Hace falta escribirla a mano: encajar la etiqueta en una plantilla del
+// tipo «¿cuál es la más ___?» solo funciona con los adjetivos. Con los
+// sustantivos sale «la más atmósfera» o «la más jump scares», que no es
+// castellano. Va sin signos ni mayúscula inicial para poder encajarla
+// tanto suelta como detrás de una coma.
+//
+// Los términos de género van en inglés —body horror, gore, slasher,
+// screamer— porque es como se llaman aquí; traducirlos suena a doblaje.
 export const TRAITS = [
-  { id: 'terror', label: 'Terror', emoji: '💀' },
-  { id: 'gore', label: 'Gore', emoji: '🩸' },
-  { id: 'tension', label: 'Tensión', emoji: '⚡' },
-  { id: 'slasher', label: 'Slasher', emoji: '🔪' },
-  { id: 'sobrenatural', label: 'Sobrenatural', emoji: '👻' },
-  { id: 'psicologico', label: 'Psicológico', emoji: '🧠' },
-  { id: 'body_horror', label: 'Body horror', emoji: '🫀' },
-  { id: 'jump_scares', label: 'Jump scares', emoji: '😱' },
-  { id: 'atmosfera', label: 'Atmósfera', emoji: '🌫️' },
-  { id: 'humor', label: 'Humor negro', emoji: '🤡' }
+  { id: 'terror', label: 'Terror', emoji: '💀', ask: 'cuál da más miedo' },
+  { id: 'gore', label: 'Gore', emoji: '🩸', ask: 'cuál tiene más gore' },
+  { id: 'tension', label: 'Tensión', emoji: '⚡', ask: 'cuál tiene más tensión' },
+  { id: 'slasher', label: 'Slasher', emoji: '🔪', ask: 'cuál es más slasher' },
+  { id: 'sobrenatural', label: 'Sobrenatural', emoji: '👻', ask: 'cuál es más sobrenatural' },
+  { id: 'psicologico', label: 'Psicológico', emoji: '🧠', ask: 'cuál es más psicológica' },
+  { id: 'body_horror', label: 'Body horror', emoji: '🫀', ask: 'cuál tiene más body horror' },
+  { id: 'jump_scares', label: 'Screamers', emoji: '😱', ask: 'cuál tiene más screamers' },
+  { id: 'atmosfera', label: 'Atmósfera', emoji: '🌫️', ask: 'cuál es más atmosférica' },
+  { id: 'humor', label: 'Humor negro', emoji: '🤡', ask: 'cuál tiene más humor negro' }
 ]
 
 export const TRAIT_LABELS = Object.fromEntries(TRAITS.map((t) => [t.id, t.label]))

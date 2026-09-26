@@ -36,7 +36,7 @@ WATCH_PROVIDER_COUNTRY = "ES"
 TARGET_YEAR = int(sys.argv[1]) if len(sys.argv) > 1 else date.today().year
 
 # 31 películas curadas manualmente para octubre de 2026.
-# Progresión: entrada accesible → desgaste psicológico → carnicería →
+# Progresión: sustos accesibles → crueldad → infección → autor →
 # estrenos del año → respiro final la noche de Halloween.
 #
 # `theme` es lo ÚNICO que se ve en la puerta sellada ("Pista: ..."),
@@ -44,27 +44,27 @@ TARGET_YEAR = int(sys.argv[1]) if len(sys.argv) > 1 else date.today().year
 # `note` es editorial interna: no se pinta en ningún sitio.
 
 CALENDAR = [
-    # Días 1-7: entrada en calor. Terror de premisa, más tensión que sangre.
-    {"day": 1,  "tmdb_id": 2675,    "title": "Señales (2002)",
-     "theme": "Invasión",            "note": "Signs - Shyamalan: el miedo empieza en el maizal de casa"},
-    {"day": 2,  "tmdb_id": 1246049, "title": "Drácula (2025)",
-     "theme": "Colmillos",           "note": "Dracula (Besson) - relectura romántica del conde"},
+    # Días 1-6: entrada. Sustos, casa encantada y found footage.
+    {"day": 1,  "tmdb_id": 1430077, "title": "Hokum (2026)",
+     "theme": "Posada irlandesa",    "note": "Hokum - un escritor de terror y las cenizas de sus padres"},
+    {"day": 2,  "tmdb_id": 23827,   "title": "Paranormal Activity (2007)",
+     "theme": "Found footage",       "note": "Paranormal Activity - la cámara fija del dormitorio"},
     {"day": 3,  "tmdb_id": 21208,   "title": "La huérfana (2009)",
      "theme": "Thriller doméstico",  "note": "Orphan - el giro más sucio del cine de adopción"},
     {"day": 4,  "tmdb_id": 333371,  "title": "Calle Cloverfield 10 (2016)",
      "theme": "Encierro",            "note": "10 Cloverfield Lane - búnker, paranoia y Goodman"},
     {"day": 5,  "tmdb_id": 1138194, "title": "Heretic (2024)",
      "theme": "Fe a prueba",         "note": "Heretic - Hugh Grant como el anfitrión equivocado"},
-    {"day": 6,  "tmdb_id": 44214,   "title": "Cisne negro (2010)",
-     "theme": "Psicológico",         "note": "Black Swan - la perfección como enfermedad"},
+    {"day": 6,  "tmdb_id": 80280,   "title": "REC 3: Génesis (2012)",
+     "theme": "Banquete de bodas",   "note": "[REC]³ Génesis - la saga sale del portal y se va de boda"},
+
+    # Días 7-12: el bloque duro. Crueldad, trampas y carne.
     {"day": 7,  "tmdb_id": 381283,  "title": "Madre! (2017)",
      "theme": "Alegoría",            "note": "mother! - Aronofsky y la casa que no deja de llenarse"},
-
-    # Días 8-12: el bloque duro. Crueldad, trampas y carne.
     {"day": 8,  "tmdb_id": 10234,   "title": "Funny Games (1997)",
      "theme": "Home invasion",       "note": "Funny Games - Haneke: violencia sin coartada para el espectador"},
-    {"day": 9,  "tmdb_id": 176,     "title": "Saw (2004)",
-     "theme": "Trampas",             "note": "Saw - el baño original, el origen de todo"},
+    {"day": 9,  "tmdb_id": 1010755, "title": "Los extraños: Capítulo 3 (2026)",
+     "theme": "Máscaras",            "note": "The Strangers: Chapter 3 - cierre de la nueva trilogía"},
     {"day": 10, "tmdb_id": 951491,  "title": "Saw X (2023)",
      "theme": "Venganza",            "note": "Saw X - Kramer en México, la mejor de la saga moderna"},
     {"day": 11, "tmdb_id": 9539,    "title": "Mártires (2008)",
@@ -72,31 +72,31 @@ CALENDAR = [
     {"day": 12, "tmdb_id": 933260,  "title": "La sustancia (2024)",
      "theme": "Body horror",         "note": "The Substance - otra versión de ti, mejor en todo"},
 
-    # Días 13-17: bicho suelto. Vampiros, alienígenas e infección.
+    # Días 13-18: de lo sobrenatural a la infección.
     {"day": 13, "tmdb_id": 36647,   "title": "Blade (1998)",
      "theme": "Acción vampírica",    "note": "Blade - respiro de adrenalina a mitad de mes"},
-    {"day": 14, "tmdb_id": 348,     "title": "Alien: El octavo pasajero (1979)",
-     "theme": "Terror espacial",     "note": "Alien - Ridley Scott, el clásico intocable"},
-    {"day": 15, "tmdb_id": 1576,    "title": "Resident Evil (2002)",
+    {"day": 14, "tmdb_id": 493922,  "title": "Hereditary (2018)",
+     "theme": "Duelo familiar",      "note": "Hereditary - Ari Aster y la herencia que no se elige"},
+    {"day": 15, "tmdb_id": 1480387, "title": "Undertone (2026)",
+     "theme": "Podcast paranormal",  "note": "Undertone: Frecuencia maldita - cintas que no deberían sonar"},
+    {"day": 16, "tmdb_id": 1576,    "title": "Resident Evil (2002)",
      "theme": "Survival horror",     "note": "Resident Evil - la Colmena y el traje rojo"},
-    {"day": 16, "tmdb_id": 395992,  "title": "Life / Vida (2017)",
-     "theme": "Criatura",            "note": "Life - Calvin suelto a bordo de la ISS"},
     {"day": 17, "tmdb_id": 72190,   "title": "Guerra Mundial Z (2013)",
      "theme": "Zombis",              "note": "World War Z - la epidemia a escala de blockbuster"},
+    {"day": 18, "tmdb_id": 1198984, "title": "We Bury the Dead (2026)",
+     "theme": "Experimento militar", "note": "We Bury the Dead - en TMDB en español: En tierra de muertos"},
 
-    # Días 18-23: autor y atmósfera. Menos sangre, más inquietud.
-    {"day": 18, "tmdb_id": 1078605, "title": "Weapons (2025)",
-     "theme": "Misterio de pueblo",  "note": "Weapons - Zach Cregger: diecisiete niños y las 2:17"},
+    # Días 19-23: autor y atmósfera. Menos sangre, más inquietud.
     {"day": 19, "tmdb_id": 576845,  "title": "Última noche en el Soho (2021)",
      "theme": "Fantasmas del pasado","note": "Last Night in Soho - Edgar Wright y el Londres de los 60"},
-    {"day": 20, "tmdb_id": 593643,  "title": "El menú (2022)",
-     "theme": "Sátira",              "note": "The Menu - alta cocina como ritual"},
+    {"day": 20, "tmdb_id": 1291595, "title": "Insidious: Fuera del más allá (2026)",
+     "theme": "Viaje astral",        "note": "Insidious: Out of the Further - la saga vuelve a lo sobrenatural"},
     {"day": 21, "tmdb_id": 949423,  "title": "Pearl (2022)",
      "theme": "Technicolor",         "note": "Pearl - Mia Goth y el monólogo final"},
     {"day": 22, "tmdb_id": 399366,  "title": "El secreto de Marrowbone (2017)",
      "theme": "Gótico español",      "note": "Marrowbone - casa heredada y secreto familiar"},
-    {"day": 23, "tmdb_id": 2668,    "title": "Sleepy Hollow (1999)",
-     "theme": "Leyenda",             "note": "Sleepy Hollow - gótico de niebla y guillotina"},
+    {"day": 23, "tmdb_id": 1100782, "title": "Smile 2 (2024)",
+     "theme": "Estrella del pop",    "note": "Smile 2 - la maldición se contagia en plena gira"},
 
     # Días 24-30: la recta final con los estrenos recientes.
     {"day": 24, "tmdb_id": 574475,  "title": "Destino final: Lazos de sangre (2025)",

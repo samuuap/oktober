@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { generateCalendar } from '../lib/calendarGenerator'
 import { MoviePickerModal } from '../components/MoviePickerModal'
+import { PublishModal } from '../components/PublishModal'
 import {
   Calendar,
   Loader,
@@ -13,7 +14,8 @@ import {
   Clock,
   SlidersHorizontal,
   Shuffle,
-  Lock
+  Lock,
+  Globe
 } from 'lucide-react'
 
 const MOVIE_FIELDS =
@@ -28,6 +30,7 @@ export const MyCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenOnboard
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState(null)
   const [pickerDay, setPickerDay] = useState(null)
+  const [publishOpen, setPublishOpen] = useState(false)
 
   const year = new Date().getFullYear()
 
@@ -122,15 +125,16 @@ export const MyCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenOnboard
       let calendarId = calendar?.id
 
       if (!calendarId) {
-        const username = userProfile?.username || user.email?.split('@')[0] || 'anon'
         const { data: created, error: createError } = await supabase
           .from('user_calendars')
           .insert({
             user_id: user.id,
             year,
-            slug: `${username}-octubre-${year}`,
+            // Provisional y sin datos personales: al publicar se
+            // reescribe a partir del alias que elija el usuario.
+            slug: `octubre-${year}-${crypto.randomUUID().slice(0, 8)}`,
             title: `Mi Octubre ${year}`,
-            is_public: true
+            is_public: false
           })
           .select()
           .single()
@@ -343,6 +347,18 @@ export const MyCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenOnboard
 
           <div className="flex items-center gap-2 flex-wrap">
             <button
+              onClick={() => setPublishOpen(true)}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 border text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                calendar.is_public
+                  ? 'bg-[#ff5400]/10 border-[#ff5400]/50 text-[#ff5400] hover:border-[#ff5400]'
+                  : 'bg-[#16161f] border-gray-800 text-gray-300 hover:border-[#ff5400]/60 hover:text-white'
+              }`}
+            >
+              {calendar.is_public ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              {calendar.is_public ? 'Publicado' : 'Publicar'}
+            </button>
+
+            <button
               onClick={onOpenOnboarding}
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#16161f] border border-gray-800 text-gray-300 text-xs font-bold uppercase tracking-wider rounded-xl hover:border-[#ff5400]/60 hover:text-white transition-all cursor-pointer"
             >
@@ -402,6 +418,19 @@ export const MyCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenOnboard
           ))}
         </div>
       </div>
+
+      <PublishModal
+
+        isOpen={publishOpen}
+
+        calendar={calendar}
+
+        onClose={() => setPublishOpen(false)}
+
+        onChanged={loadCalendar}
+
+      />
+
 
       <MoviePickerModal
         isOpen={pickerDay !== null}

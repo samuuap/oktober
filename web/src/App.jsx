@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { supabase } from './lib/supabase'
 import { useAuth } from './context/AuthContext'
 import { Navbar } from './components/Navbar'
@@ -7,14 +7,28 @@ import { AuthModal } from './components/AuthModal'
 import { WatchlistModal } from './components/WatchlistModal'
 import { OnboardingModal } from './components/OnboardingModal'
 import { OfficialCalendar } from './pages/OfficialCalendar'
-import { MyCalendar } from './pages/MyCalendar'
-import { Explore } from './pages/Explore'
-import { AdminDashboard } from './pages/AdminDashboard'
+
+// El calendario oficial es la portada y entra en el bundle principal.
+// Las demás vistas se cargan al pisarlas: quien solo mira el calendario
+// no descarga Explorar, Mi calendario ni el panel de admin.
+const MyCalendar = lazy(() => import('./pages/MyCalendar').then((m) => ({ default: m.MyCalendar })))
+const Explore = lazy(() => import('./pages/Explore').then((m) => ({ default: m.Explore })))
+const Inspiration = lazy(() => import('./pages/Inspiration').then((m) => ({ default: m.Inspiration })))
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then((m) => ({ default: m.AdminDashboard })))
+
+const Spinner = ({ label }) => (
+  <div className="flex-1 flex flex-col items-center justify-center py-40 space-y-4">
+    <div className="w-16 h-16 rounded-full border-4 border-[#ff5400]/30 border-t-[#ff5400] animate-spin" />
+    <p className="text-sm font-bold uppercase tracking-widest text-[#ff5400] animate-pulse">{label}</p>
+  </div>
+)
 import { emptyFilters } from './lib/movieFilters'
 import { Skull } from 'lucide-react'
 
 const MOVIE_FIELDS =
-  'tmdb_id, title, original_title, overview, poster_path, backdrop_path, year, runtime, vote_average, vote_count, genres, characteristics, watch_providers, popularity'
+  // Sin watch_providers a propósito: son 511 KB de los 1,2 MB que pesaba
+  // esta consulta y solo se usan en la ficha, que ahora los pide sola.
+  'tmdb_id, title, original_title, overview, poster_path, backdrop_path, year, runtime, vote_average, vote_count, genres, characteristics, popularity'
 
 export function App() {
   const { refreshProfile, watchlist } = useAuth()
@@ -74,44 +88,49 @@ export function App() {
         onOpenOnboarding={() => setOnboardingOpen(true)}
       />
 
-      {loading ? (
-        <div className="flex-1 flex flex-col items-center justify-center py-40 space-y-4">
-          <div className="w-16 h-16 rounded-full border-4 border-[#ff5400]/30 border-t-[#ff5400] animate-spin" />
-          <p className="text-sm font-bold uppercase tracking-widest text-[#ff5400] animate-pulse">
-            Invocando las películas del terror…
-          </p>
-        </div>
-      ) : (
-        <main className="flex-1">
-          {view === 'official' && (
-            <OfficialCalendar
-              movies={movies}
-              onSelectMovie={setSelectedMovie}
-              onRequireAuth={() => setAuthModalOpen(true)}
-            />
-          )}
+      <main className="flex-1">
+        {/* El calendario oficial se pinta sin esperar al catálogo: solo lo
+            necesita para generar las preguntas, y eso ocurre al abrir una
+            puerta. Antes la portada aguardaba a 1,2 MB de películas. */}
+        {view === 'official' && (
+          <OfficialCalendar
+            movies={movies}
+            onSelectMovie={setSelectedMovie}
+            onRequireAuth={() => setAuthModalOpen(true)}
+            onOpenOnboarding={() => setOnboardingOpen(true)}
+          />
+        )}
 
-          {view === 'mine' && (
-            <MyCalendar
-              movies={movies}
-              onSelectMovie={setSelectedMovie}
-              onRequireAuth={() => setAuthModalOpen(true)}
-              onOpenOnboarding={() => setOnboardingOpen(true)}
-            />
-          )}
+        {view !== 'official' && (
+          loading ? (
+            <Spinner label="Invocando las películas del terror…" />
+          ) : (
+            <Suspense fallback={<Spinner label="Abriendo…" />}>
+              {view === 'mine' && (
+                <MyCalendar
+                  movies={movies}
+                  onSelectMovie={setSelectedMovie}
+                  onRequireAuth={() => setAuthModalOpen(true)}
+                  onOpenOnboarding={() => setOnboardingOpen(true)}
+                />
+              )}
 
-          {view === 'explore' && (
-            <Explore
-              movies={movies}
-              filters={filters}
-              setFilters={setFilters}
-              onSelectMovie={setSelectedMovie}
-            />
-          )}
+              {view === 'explore' && (
+                <Explore
+                  movies={movies}
+                  filters={filters}
+                  setFilters={setFilters}
+                  onSelectMovie={setSelectedMovie}
+                />
+              )}
 
-          {view === 'admin' && <AdminDashboard />}
-        </main>
-      )}
+              {view === 'inspiration' && <Inspiration onSelectMovie={setSelectedMovie} />}
+
+              {view === 'admin' && <AdminDashboard />}
+            </Suspense>
+          )
+        )}
+      </main>
 
       <footer className="mt-20 border-t border-gray-800/80 bg-[#07070a] py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">

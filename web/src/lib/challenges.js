@@ -60,6 +60,12 @@ function pick(items) {
   return items[Math.floor(Math.random() * items.length)]
 }
 
+// Las preguntas de TRAITS se guardan en minúscula y sin signos, para poder
+// colocarlas detrás de una coma. Esta las deja listas para ir solas.
+function asQuestion(ask) {
+  return `¿${ask.charAt(0).toUpperCase()}${ask.slice(1)}?`
+}
+
 // n películas distintas (por título, para no mostrar dos veces lo mismo)
 function sampleMovies(pool, n) {
   const chosen = []
@@ -153,7 +159,7 @@ function ratingRound(pool) {
 
     return {
       kind: 'text',
-      prompt: '¿Cuál de estas tiene mejor nota en TMDB?',
+      prompt: 'De estas cuatro, ¿cuál tiene mejor nota en TMDB?',
       ...toOptions(movies, sorted[0])
     }
   }
@@ -175,7 +181,9 @@ function traitRound(pool) {
 
     return {
       kind: 'text',
-      prompt: `Según el análisis de la IA, ¿cuál es la más ${trait.label.toLowerCase()}? ${trait.emoji}`,
+      // Se dice de dónde sale el dato: la respuesta es la de nuestras
+      // etiquetas, no la que opine cada uno.
+      prompt: `Según nuestras etiquetas, ¿${trait.ask}? ${trait.emoji}`,
       ...toOptions(movies, sorted[0])
     }
   }
@@ -195,7 +203,7 @@ function synopsisRound(pool) {
 
     return {
       kind: 'synopsis',
-      prompt: '¿A qué película pertenece esta sinopsis?',
+      prompt: 'Esta sinopsis lleva el título tachado. ¿De qué película es?',
       text,
       ...toOptions(movies, target)
     }
@@ -213,7 +221,7 @@ function posterRound(pool, blur) {
 
   return {
     kind: 'poster',
-    prompt: '¿De qué película es este póster?',
+    prompt: 'El póster está entre la niebla. ¿De qué película es?',
     posterPath: target.poster_path,
     blur,
     ...toOptions(movies, target)
@@ -234,7 +242,7 @@ function duelRound(pool) {
 
     return {
       kind: 'duel',
-      prompt: `¿Cuál tiene más ${trait.label.toLowerCase()}? ${trait.emoji}`,
+      prompt: `${asQuestion(trait.ask)} ${trait.emoji}`,
       ...toOptions(movies, sorted[0])
     }
   }

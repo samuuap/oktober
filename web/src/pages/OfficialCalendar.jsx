@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { Lock, Loader, Skull, Calendar, Sparkles, Star } from 'lucide-react'
+import { Lock, Loader, Skull, Calendar, Sparkles, Star, SlidersHorizontal, ArrowRight } from 'lucide-react'
 import { ChallengeModal } from '../components/ChallengeModal'
 import { CountdownWidget } from '../components/CountdownWidget'
 import { challengeTypeForDay, CHALLENGE_META } from '../lib/challenges'
@@ -9,8 +9,8 @@ import { challengeTypeForDay, CHALLENGE_META } from '../lib/challenges'
 const MOVIE_FIELDS =
   'tmdb_id, title, original_title, overview, poster_path, backdrop_path, year, runtime, vote_average, vote_count, genres, characteristics, watch_providers'
 
-export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth }) => {
-  const { user } = useAuth()
+export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenOnboarding }) => {
+  const { user, hasCompletedOnboarding } = useAuth()
 
   const [year, setYear] = useState(new Date().getFullYear())
   const [days, setDays] = useState([])
@@ -244,6 +244,34 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth }) => {
           )}
         </div>
       </div>
+
+      {/* Quien ha entrado pero no ha dicho qué le gusta se queda sin
+          calendario personal y sin saberlo. Se lo recordamos aquí, que es
+          por donde se aterriza, y desaparece solo al completarlo. */}
+      {user && !hasCompletedOnboarding && (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mb-10">
+          <button
+            onClick={onOpenOnboarding}
+            className="group w-full flex items-center gap-4 text-left rounded-2xl border border-[#ff5400]/40 bg-gradient-to-r from-[#ff5400]/10 to-transparent px-5 py-4 hover:border-[#ff5400] hover:from-[#ff5400]/20 transition-all cursor-pointer"
+          >
+            <div className="shrink-0 w-11 h-11 rounded-xl bg-[#ff5400]/15 border border-[#ff5400]/40 flex items-center justify-center">
+              <SlidersHorizontal className="w-5 h-5 text-[#ff5400]" />
+            </div>
+
+            <div className="flex-1 min-w-0 space-y-0.5">
+              <p className="text-sm font-black uppercase tracking-wider text-white">
+                Te falta decirnos qué terror te va
+              </p>
+              <p className="text-xs text-gray-400 leading-snug">
+                Un par de preguntas y te montamos un segundo calendario, distinto a este y
+                hecho a tu medida. Se cambia cuando quieras.
+              </p>
+            </div>
+
+            <ArrowRight className="shrink-0 w-5 h-5 text-[#ff5400] group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      )}
 
       {/* Cuenta atrás hasta la noche de Halloween */}
       <CountdownWidget />

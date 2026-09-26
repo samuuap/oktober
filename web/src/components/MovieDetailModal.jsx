@@ -1,9 +1,41 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { X, Star, Clock, Calendar, Heart, Tv, ShoppingCart, Film, Skull } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export const MovieDetailModal = ({ movie, onClose }) => {
   const { isWatchlisted, toggleWatchlist } = useAuth()
+
+  // Las plataformas son el campo más pesado del catálogo —511 KB de los
+  // 1,2 MB— y solo se ven aquí. En vez de viajar con las 738 películas en
+  // cada carga, se piden al abrir la ficha.
+  const [providers, setProviders] = useState(null)
+
+  useEffect(() => {
+    if (!movie) {
+      setProviders(null)
+      return
+    }
+
+    if (movie.watch_providers) {
+      setProviders(movie.watch_providers)
+      return
+    }
+
+    let cancelled = false
+    setProviders(null)
+
+    supabase
+      .from('movies')
+      .select('watch_providers')
+      .eq('tmdb_id', movie.tmdb_id)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled) setProviders(data?.watch_providers || { flatrate: [], rent: [], buy: [] })
+      })
+
+    return () => { cancelled = true }
+  }, [movie?.tmdb_id])
 
   useEffect(() => {
     if (!movie) return
@@ -35,15 +67,15 @@ export const MovieDetailModal = ({ movie, onClose }) => {
     { key: 'sobrenatural', label: 'Sobrenatural / Fantasmas', color: 'from-purple-500 to-indigo-600' },
     { key: 'psicologico', label: 'Horror Psicológico', color: 'from-blue-500 to-cyan-500' },
     { key: 'body_horror', label: 'Body Horror', color: 'from-pink-600 to-rose-800' },
-    { key: 'jump_scares', label: 'Jump Scares / Sustos', color: 'from-emerald-500 to-teal-600' },
+    { key: 'jump_scares', label: 'Screamers', color: 'from-emerald-500 to-teal-600' },
     { key: 'atmosfera', label: 'Atmósfera / Dread', color: 'from-violet-600 to-purple-800' },
     { key: 'humor', label: 'Humor Negro / Comedia', color: 'from-lime-500 to-emerald-600' },
   ]
 
-  const providers = movie.watch_providers || { flatrate: [], rent: [], buy: [] }
-  const flatrate = providers.flatrate || []
-  const rent = providers.rent || []
-  const buy = providers.buy || []
+  const shown = providers || { flatrate: [], rent: [], buy: [] }
+  const flatrate = shown.flatrate || []
+  const rent = shown.rent || []
+  const buy = shown.buy || []
   const hasAnyProviders = flatrate.length > 0 || rent.length > 0 || buy.length > 0
 
   return (

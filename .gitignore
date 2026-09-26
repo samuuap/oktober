@@ -30,3 +30,10 @@ htmlcov/
 .idea/
 
 web/node_modules/
+
+# Estado de ejecución de los scripts, no del proyecto
+import_progress.json
+import_errors.json
+
+# Temporales del CLI de Supabase
+supabase/.temp/

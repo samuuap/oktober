@@ -2,11 +2,13 @@
 
 ## Environment Variables Required
 
-Add in Vercel Dashboard → Settings → Environment Variables:
+Add in Vercel Dashboard → Settings → Environment Variables.
+Solo la clave publicable: acaba dentro del bundle del navegador, así que
+la `service_role` no puede entrar aquí bajo ningún concepto.
 
 ```
 VITE_SUPABASE_URL=https://xxdkkihdpzoxgjygblhx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4ZGtraWhkcHpveGdqeWdibGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzQ5MjcsImV4cCI6MjA1MTkxMDkyN30.4p2xS8o5kPXAW8vW-s7YkNL0HJwlbPXxFo7kCO0YXLg
+VITE_SUPABASE_ANON_KEY=sb_publishable_c1FHcswe1AdzbTvQRegMrw_hyuQAm-b
 ```
 
 ## Deploy Commands

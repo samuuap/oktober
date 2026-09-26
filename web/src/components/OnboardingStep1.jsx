@@ -58,7 +58,7 @@ export const OnboardingStep1 = ({ onNext, initialPreferences }) => {
     },
     {
       key: 'jump_scares',
-      label: 'Jump Scares',
+      label: 'Screamers',
       icon: Zap,
       color: 'yellow',
       description: 'Sustos repentinos'

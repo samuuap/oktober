@@ -37,7 +37,7 @@ export const OnboardingStep3 = ({ preferences, likedMovies, onBack, onComplete }
 
     if (preferences.psicologico >= 7) items.push('🧠 Terror psicológico')
     if (preferences.slasher >= 7) items.push('🔪 Slasher')
-    if (preferences.jump_scares >= 7) items.push('⚡ Jump scares')
+    if (preferences.jump_scares >= 7) items.push('⚡ Screamers')
     else if (preferences.jump_scares <= 3) items.push('🌫️ Tensión atmosférica')
 
     return items

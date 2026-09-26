@@ -24,22 +24,29 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
   // Las puertas de los días ya pasados se abren solas, para todo el mundo y
   // sin prueba. Se recalcula cada minuto para que el cambio de día entre
   // aunque la pestaña lleve horas abierta.
-  const [revealedThrough, setRevealedThrough] = useState(() => autoRevealedThrough(new Date().getFullYear()))
+  const [revealedThrough, setRevealedThrough] = useState(0)
   const reloadRef = useRef(null)
+  const revealedRef = useRef(0)
 
   useEffect(() => {
-    const tick = () =>
-      setRevealedThrough((previous) => {
-        const current = autoRevealedThrough(year)
-        // Al cruzar la medianoche con la pestaña abierta hay puertas nuevas
-        // cuyas películas no se pidieron al cargar. Sin esto se pintarían
-        // como «abiertas, sin película asignada».
-        if (current > previous) reloadRef.current?.()
-        return current
-      })
+    // Al montar solo fijamos el valor: loadCalendar ya calcula por su cuenta
+    // qué películas hay que pedir, así que recargar aquí sería una petición
+    // duplicada en cada visita.
+    revealedRef.current = autoRevealedThrough(year)
+    setRevealedThrough(revealedRef.current)
 
-    tick()
-    const timer = setInterval(tick, 60_000)
+    const timer = setInterval(() => {
+      const current = autoRevealedThrough(year)
+      if (current <= revealedRef.current) return
+
+      revealedRef.current = current
+      setRevealedThrough(current)
+
+      // Puerta nueva con la pestaña abierta: sus películas no se pidieron al
+      // cargar, y sin esto se pintaría como «abierta, sin película asignada».
+      reloadRef.current?.()
+    }, 60_000)
+
     return () => clearInterval(timer)
   }, [year])
 
@@ -245,8 +252,8 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
           </h1>
 
           <p className="text-sm sm:text-base text-gray-400 max-w-xl mx-auto">
-            31 puertas selladas, una por cada noche de octubre de {year}. Detrás de cada una hay una
-            película — pero solo se abre para quien supere su prueba.
+            31 puertas, una por cada noche de octubre de {year}. Cada una se abre sola cuando su
+            día ha pasado — o antes de tiempo, si superas la prueba que la guarda.
           </p>
 
           {total > 0 && (

@@ -21,7 +21,12 @@ export const CountdownWidget = () => {
     const calculateTimeLeft = () => {
       const now = new Date()
       const current = countdownTarget(now)
-      setTarget(current)
+
+      // Solo cambia al saltar de "falta para el 1 de octubre" a "falta para
+      // Halloween". Reemplazar el objeto cada segundo no aportaba nada.
+      setTarget((previous) =>
+        previous.kind === current.kind && previous.year === current.year ? previous : current
+      )
 
       const difference = current.date.getTime() - now.getTime()
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { countdownTarget } from '../lib/calendarDates'
-import { Volume2, VolumeX, Music, Flame } from 'lucide-react'
+import { Flame } from 'lucide-react'
 
 export const CountdownWidget = () => {
   const [timeLeft, setTimeLeft] = useState({
@@ -9,8 +9,6 @@ export const CountdownWidget = () => {
     minutes: 0,
     seconds: 0
   })
-  const [soundEnabled, setSoundEnabled] = useState(false)
-  const [ambientAudio, setAmbientAudio] = useState(null)
 
   // Antes de octubre mira al día 1, que es cuando arranca el calendario;
   // ya dentro del mes, a la noche de Halloween. Las fechas se calculan en
@@ -44,47 +42,6 @@ export const CountdownWidget = () => {
     const timer = setInterval(calculateTimeLeft, 1000)
     return () => clearInterval(timer)
   }, [])
-
-  // Spooky synthesized ambient sound on toggle
-  const toggleSound = () => {
-    if (!soundEnabled) {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-        
-        // Oscillator for spooky low frequency drone
-        const osc = audioCtx.createOscillator()
-        const gain = audioCtx.createGain()
-        osc.type = 'sawtooth'
-        osc.frequency.setValueAtTime(55, audioCtx.currentTime) // A1 low drone
-        
-        // Filter to make it dark and muffled like a spooky wind
-        const filter = audioCtx.createBiquadFilter()
-        filter.type = 'lowpass'
-        filter.frequency.setValueAtTime(160, audioCtx.currentTime)
-
-        gain.gain.setValueAtTime(0.08, audioCtx.currentTime)
-
-        osc.connect(filter)
-        filter.connect(gain)
-        gain.connect(audioCtx.destination)
-
-        osc.start()
-        setAmbientAudio({ audioCtx, osc, gain })
-        setSoundEnabled(true)
-      } catch (e) {
-        console.error('Audio could not start:', e)
-      }
-    } else {
-      if (ambientAudio) {
-        try {
-          ambientAudio.osc.stop()
-          ambientAudio.audioCtx.close()
-        } catch (e) {}
-      }
-      setAmbientAudio(null)
-      setSoundEnabled(false)
-    }
-  }
 
   // Format with leading zero
   const pad = (num) => String(num).padStart(2, '0')
@@ -153,24 +110,13 @@ export const CountdownWidget = () => {
 
         </div>
 
-        {/* Sound Toggle + Subtitle */}
+        {/* Pie */}
         <div className="text-center mt-6 relative z-10 flex items-center justify-center gap-4">
           <span className="text-sm font-medium text-gray-400 tracking-wide">
             {target.kind === 'start'
               ? `1 de Octubre de ${target.year} • Arranca OKTOBER`
               : '31 de Octubre • La Noche Más Oscura'}
           </span>
-          <button
-            onClick={toggleSound}
-            title={soundEnabled ? 'Silenciar ambiente' : 'Activar sonido ambiente'}
-            className={`p-2 rounded-xl border transition-all cursor-pointer ${
-              soundEnabled
-                ? 'bg-[#ff5400]/20 border-[#ff5400]/60 text-[#ff5400]'
-                : 'bg-black/40 border-gray-700 text-gray-500 hover:text-[#ff5400] hover:border-[#ff5400]/40'
-            }`}
-          >
-            {soundEnabled ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-          </button>
         </div>
 
       </div>

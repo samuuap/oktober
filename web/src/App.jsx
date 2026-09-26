@@ -6,6 +6,7 @@ import { MovieDetailModal } from './components/MovieDetailModal'
 import { AuthModal } from './components/AuthModal'
 import { WatchlistModal } from './components/WatchlistModal'
 import { OnboardingModal } from './components/OnboardingModal'
+import { AmbientPlayer } from './components/AmbientPlayer'
 import { OfficialCalendar } from './pages/OfficialCalendar'
 
 // El calendario oficial es la portada y entra en el bundle principal.
@@ -153,6 +154,10 @@ export function App() {
           </div>
         </div>
       </footer>
+
+      {/* Fuera de <main> y de las vistas: si viviera dentro del contador, la
+          música se cortaría al cambiar de pestaña. */}
+      <AmbientPlayer />
 
       <MovieDetailModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />
 

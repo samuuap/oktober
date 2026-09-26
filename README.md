@@ -203,49 +203,6 @@ intentar escribir en ella con la clave pública: `42501` es que RLS lo frena,
 cualquier error de constraint significa que pasó. Y para las columnas, mirar
 `information_schema.column_privileges`, no el `GRANT` que uno cree haber puesto.
 
-## El calendario oficial de 2026
-
-| Día | Película | Año | Dur. | TMDB | Pista |
-|----:|----------|----:|-----:|-----:|-------|
-| 1 | Hokum | 2026 | 108 min | `1430077` | Posada irlandesa |
-| 2 | Paranormal Activity | 2007 | 86 min | `23827` | Found footage |
-| 3 | La huérfana | 2009 | 123 min | `21208` | Thriller doméstico |
-| 4 | Calle Cloverfield 10 | 2016 | 103 min | `333371` | Encierro |
-| 5 | Heretic | 2024 | 110 min | `1138194` | Fe a prueba |
-| 6 | REC 3: Génesis | 2012 | 80 min | `80280` | Banquete de bodas |
-| 7 | Madre! | 2017 | 121 min | `381283` | Alegoría |
-| 8 | Funny Games | 1997 | 108 min | `10234` | Home invasion |
-| 9 | Los extraños: Capítulo 3 | 2026 | 92 min | `1010755` | Máscaras |
-| 10 | Saw X | 2023 | 118 min | `951491` | Venganza |
-| 11 | Mártires | 2008 | 97 min | `9539` | Extremo francés |
-| 12 | La sustancia | 2024 | 141 min | `933260` | Body horror |
-| 13 | Blade | 1998 | 120 min | `36647` | Acción vampírica |
-| 14 | Hereditary | 2018 | 126 min | `493922` | Duelo familiar |
-| 15 | Undertone | 2026 | 94 min | `1480387` | Podcast paranormal |
-| 16 | Resident Evil | 2002 | 96 min | `1576` | Survival horror |
-| 17 | Guerra Mundial Z | 2013 | 116 min | `72190` | Zombis |
-| 18 | We Bury the Dead | 2026 | 95 min | `1198984` | Experimento militar |
-| 19 | Última noche en el Soho | 2021 | 118 min | `576845` | Fantasmas del pasado |
-| 20 | Insidious: Fuera del más allá | 2026 | 106 min | `1291595` | Viaje astral |
-| 21 | Pearl | 2022 | 101 min | `949423` | Technicolor |
-| 22 | El secreto de Marrowbone | 2017 | 110 min | `399366` | Gótico español |
-| 23 | Smile 2 | 2024 | 127 min | `1100782` | Estrella del pop |
-| 24 | Destino final: Lazos de sangre | 2025 | 110 min | `574475` | Accidentes |
-| 25 | 28 años después | 2025 | 115 min | `1100988` | Infectados |
-| 26 | Backrooms | 2026 | 105 min | `1083381` | Espacios liminales |
-| 27 | Posesión infernal: En llamas | 2026 | 110 min | `1212763` | Libro maldito |
-| 28 | La momia de Lee Cronin | 2026 | 133 min | `1304313` | Maldición antigua |
-| 29 | Obsession | 2026 | 108 min | `1339713` | Hechizo |
-| 30 | Los pecadores | 2025 | 137 min | `1233413` | Blues y sangre |
-| 31 | Pesadilla antes de Navidad | 1993 | 75 min | `9479` | Stop-motion |
-
-La progresión va de sustos accesibles a crueldad, de ahí a infección y cine de
-autor, luego los estrenos del año, y el 31 baja el pulso para cerrar en fiesta.
-
-La columna *Pista* es lo único que se ve en la puerta sellada: sugiere sin
-cantar el título. Conviene que no coincida con el nombre de ninguna prueba, o
-en la tarjeta se leerá dos veces lo mismo.
-
 ---
 
 ## Créditos

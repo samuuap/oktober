@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { countdownTarget } from '../lib/calendarDates'
 import { Volume2, VolumeX, Music, Flame } from 'lucide-react'
 
 export const CountdownWidget = () => {
@@ -11,19 +12,18 @@ export const CountdownWidget = () => {
   const [soundEnabled, setSoundEnabled] = useState(false)
   const [ambientAudio, setAmbientAudio] = useState(null)
 
-  // Target: Next October 31st at 00:00:00
+  // Antes de octubre mira al día 1, que es cuando arranca el calendario;
+  // ya dentro del mes, a la noche de Halloween. Las fechas se calculan en
+  // hora de Madrid, igual que el desbloqueo de las puertas.
+  const [target, setTarget] = useState(() => countdownTarget())
+
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date()
-      let currentYear = now.getFullYear()
-      let targetDate = new Date(currentYear, 9, 31, 23, 59, 59) // Oct 31st
+      const current = countdownTarget(now)
+      setTarget(current)
 
-      // If Halloween has already passed this year, point to next year
-      if (now.getTime() > targetDate.getTime()) {
-        targetDate = new Date(currentYear + 1, 9, 31, 23, 59, 59)
-      }
-
-      const difference = targetDate.getTime() - now.getTime()
+      const difference = current.date.getTime() - now.getTime()
 
       if (difference > 0) {
         setTimeLeft({
@@ -93,11 +93,13 @@ export const CountdownWidget = () => {
         <div className="text-center relative z-10 mb-6">
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-widest text-[#ff5400] uppercase font-sans flex items-center justify-center gap-2">
             <Flame className="w-6 h-6 text-[#ff5400]" />
-            <span>COUNTDOWN TO HALLOWEEN</span>
+            <span>{target.kind === 'start' ? 'EMPIEZA OKTOBER' : 'COUNTDOWN TO HALLOWEEN'}</span>
             <Flame className="w-6 h-6 text-[#ff5400]" />
           </h2>
           <p className="text-xs text-orange-200/60 uppercase tracking-widest mt-1">
-            Cada segundo te acerca a la noche de las brujas
+            {target.kind === 'start'
+              ? 'Las 31 puertas se abren, una cada noche'
+              : 'Cada segundo te acerca a la noche de las brujas'}
           </p>
         </div>
 
@@ -149,7 +151,9 @@ export const CountdownWidget = () => {
         {/* Sound Toggle + Subtitle */}
         <div className="text-center mt-6 relative z-10 flex items-center justify-center gap-4">
           <span className="text-sm font-medium text-gray-400 tracking-wide">
-            31 de Octubre • La Noche Más Oscura
+            {target.kind === 'start'
+              ? `1 de Octubre de ${target.year} • Arranca OKTOBER`
+              : '31 de Octubre • La Noche Más Oscura'}
           </span>
           <button
             onClick={toggleSound}

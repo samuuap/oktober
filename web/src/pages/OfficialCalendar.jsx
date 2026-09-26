@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { Lock, Loader, Skull, Calendar, Sparkles, Star, SlidersHorizontal, ArrowRight } from 'lucide-react'
 import { ChallengeModal } from '../components/ChallengeModal'
 import { CountdownWidget } from '../components/CountdownWidget'
 import { challengeTypeForDay, CHALLENGE_META } from '../lib/challenges'
+import { autoRevealedThrough } from '../lib/calendarDates'
 
 const MOVIE_FIELDS =
   'tmdb_id, title, original_title, overview, poster_path, backdrop_path, year, runtime, vote_average, vote_count, genres, characteristics, watch_providers'
@@ -19,6 +20,28 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
   const [loading, setLoading] = useState(true)
   const [activeDay, setActiveDay] = useState(null)
   const [migrationMissing, setMigrationMissing] = useState(false)
+
+  // Las puertas de los días ya pasados se abren solas, para todo el mundo y
+  // sin prueba. Se recalcula cada minuto para que el cambio de día entre
+  // aunque la pestaña lleve horas abierta.
+  const [revealedThrough, setRevealedThrough] = useState(() => autoRevealedThrough(new Date().getFullYear()))
+  const reloadRef = useRef(null)
+
+  useEffect(() => {
+    const tick = () =>
+      setRevealedThrough((previous) => {
+        const current = autoRevealedThrough(year)
+        // Al cruzar la medianoche con la pestaña abierta hay puertas nuevas
+        // cuyas películas no se pidieron al cargar. Sin esto se pintarían
+        // como «abiertas, sin película asignada».
+        if (current > previous) reloadRef.current?.()
+        return current
+      })
+
+    tick()
+    const timer = setInterval(tick, 60_000)
+    return () => clearInterval(timer)
+  }, [year])
 
   // ----------------------------------------------------------
   // Carga
@@ -83,10 +106,12 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
       }
       setUnlocked(unlockedDays)
 
-      // Solo pedimos los datos de las películas ya reveladas:
-      // las selladas ni siquiera llegan al navegador.
+      // Solo pedimos los datos de las películas ya reveladas —por prueba
+      // superada o porque su día ya pasó—: las selladas ni siquiera llegan
+      // al navegador.
+      const revealed = autoRevealedThrough(targetYear)
       const idsToLoad = (rows || [])
-        .filter((row) => unlockedDays.has(row.day_number) && row.tmdb_id)
+        .filter((row) => (unlockedDays.has(row.day_number) || row.day_number <= revealed) && row.tmdb_id)
         .map((row) => row.tmdb_id)
 
       if (idsToLoad.length > 0) {
@@ -111,6 +136,7 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
   }, [user?.id])
 
   useEffect(() => {
+    reloadRef.current = loadCalendar
     loadCalendar()
   }, [loadCalendar])
 
@@ -118,13 +144,18 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
   // Desbloqueo
   // ----------------------------------------------------------
 
+  const isOpen = useCallback(
+    (dayNumber) => unlocked.has(dayNumber) || dayNumber <= revealedThrough,
+    [unlocked, revealedThrough]
+  )
+
   // Las películas aún selladas quedan fuera de las preguntas
   const challengePool = useMemo(() => {
     const hidden = new Set(
-      days.filter((day) => !unlocked.has(day.day_number)).map((day) => day.tmdb_id)
+      days.filter((day) => !isOpen(day.day_number)).map((day) => day.tmdb_id)
     )
     return movies.filter((movie) => !hidden.has(movie.tmdb_id))
-  }, [movies, days, unlocked])
+  }, [movies, days, isOpen])
 
   const handleSolved = async (dayNumber, { challengeType, attempts }) => {
     const day = days.find((item) => item.day_number === dayNumber)
@@ -167,7 +198,7 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
   }
 
   const openDay = (day) => {
-    if (unlocked.has(day.day_number)) {
+    if (isOpen(day.day_number)) {
       const movie = revealedMovies[day.tmdb_id]
       if (movie) onSelectMovie(movie)
       return
@@ -196,9 +227,9 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
     )
   }
 
-  const unlockedCount = unlocked.size
+  const openCount = days.filter((day) => isOpen(day.day_number)).length
   const total = days.length
-  const percent = total > 0 ? Math.round((unlockedCount / total) * 100) : 0
+  const percent = total > 0 ? Math.round((openCount / total) * 100) : 0
 
   return (
     <div className="py-10">
@@ -221,8 +252,8 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
           {total > 0 && (
             <div className="max-w-md mx-auto space-y-2 pt-2">
               <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
-                <span className="text-gray-500">Tu progreso</span>
-                <span className="text-[#ff5400]">{unlockedCount} / {total}</span>
+                <span className="text-gray-500">Puertas abiertas</span>
+                <span className="text-[#ff5400]">{openCount} / {total}</span>
               </div>
               <div className="h-2 bg-[#181822] rounded-full overflow-hidden border border-gray-800">
                 <div
@@ -301,7 +332,8 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
               <DayDoor
                 key={day.day_number}
                 day={day}
-                isUnlocked={unlocked.has(day.day_number)}
+                isUnlocked={isOpen(day.day_number)}
+                byDate={!unlocked.has(day.day_number) && day.day_number <= revealedThrough}
                 movie={revealedMovies[day.tmdb_id]}
                 year={year}
                 onOpen={() => openDay(day)}
@@ -328,7 +360,7 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
 // Puerta de un día
 // ------------------------------------------------------------
 
-const DayDoor = ({ day, isUnlocked, movie, year, onOpen }) => {
+const DayDoor = ({ day, isUnlocked, byDate, movie, year, onOpen }) => {
   const meta = CHALLENGE_META[challengeTypeForDay(day.day_number, year)]
 
   // Día superado pero sin película asignada en el calendario editorial:
@@ -378,11 +410,19 @@ const DayDoor = ({ day, isUnlocked, movie, year, onOpen }) => {
         ) : null}
 
         <div className="absolute bottom-0 inset-x-0 p-2.5 space-y-1">
-          {day.theme && (
-            <span className="inline-block bg-[#ff5400]/20 border border-[#ff5400]/40 text-[#ff5400] text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded">
-              {day.theme}
-            </span>
-          )}
+          {/* En una sola fila: apilados empujaban el título sobre el póster. */}
+          <div className="flex flex-wrap items-center gap-1">
+            {byDate && (
+              <span className="bg-black/70 border border-gray-700 text-gray-400 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                Ya pasó
+              </span>
+            )}
+            {day.theme && (
+              <span className="bg-[#ff5400]/20 border border-[#ff5400]/40 text-[#ff5400] text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                {day.theme}
+              </span>
+            )}
+          </div>
           <h3 className="text-[11px] font-bold text-white line-clamp-2 leading-tight">
             {movie.title}
           </h3>

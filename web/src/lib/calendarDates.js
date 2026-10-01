@@ -34,9 +34,9 @@ export function todayInMadrid(now = new Date()) {
 // Último día del calendario que ya está a la vista de todo el mundo, sin
 // necesidad de superar su prueba.
 //
-// La puerta de un día se abre sola cuando ese día ha terminado: el 4 de
-// octubre están destapados el 1, el 2 y el 3, y el 4 sigue sellado hasta
-// el día siguiente. Quien no quiera esperar, que supere la prueba.
+// La puerta de un día se abre sola el mismo día en que toca ver la película:
+// por ejemplo, el 2 de octubre ya están destapados el 1 y el 2. Quien quiera
+// ver los días posteriores antes de tiempo, puede superar su prueba.
 export function autoRevealedThrough(calendarYear, now = new Date()) {
   const { year, month, day } = todayInMadrid(now)
 
@@ -45,7 +45,7 @@ export function autoRevealedThrough(calendarYear, now = new Date()) {
   if (month < 10) return 0
   if (month > 10) return 31
 
-  return Math.min(31, Math.max(0, day - 1))
+  return Math.min(31, Math.max(0, day))
 }
 
 // El instante exacto que corresponde a una hora local de Madrid. Hace falta

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { X, Mail, Lock, Sparkles, Skull } from 'lucide-react'
+import { X, Mail, Lock, Sparkles, Skull, Eye, EyeOff } from 'lucide-react'
 
 export const AuthModal = ({ isOpen, onClose, onOpenOnboarding }) => {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail, saveUserProfile } = useAuth()
@@ -8,6 +8,8 @@ export const AuthModal = ({ isOpen, onClose, onOpenOnboarding }) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [username, setUsername] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -204,14 +206,24 @@ export const AuthModal = ({ isOpen, onClose, onOpenOnboarding }) => {
             <div className="relative">
               <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 minLength={6}
-                className="w-full bg-[#181822] border border-gray-700/80 focus:border-[#ff5400] focus:ring-1 focus:ring-[#ff5400] text-white text-sm rounded-xl pl-10 pr-4 py-2.5 outline-none transition-all placeholder:text-gray-600"
+                className="w-full bg-[#181822] border border-gray-700/80 focus:border-[#ff5400] focus:ring-1 focus:ring-[#ff5400] text-white text-sm rounded-xl pl-10 pr-10 py-2.5 outline-none transition-all placeholder:text-gray-600"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-3 text-gray-500 hover:text-gray-300 transition-colors focus:outline-none cursor-pointer"
+                title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
             {!isLogin && (
               <p className="text-[10px] text-gray-500 mt-1">
@@ -229,13 +241,23 @@ export const AuthModal = ({ isOpen, onClose, onOpenOnboarding }) => {
               <div className="relative">
                 <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
                 <input
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#181822] border border-gray-700/80 focus:border-[#ff5400] focus:ring-1 focus:ring-[#ff5400] text-white text-sm rounded-xl pl-10 pr-4 py-2.5 outline-none transition-all placeholder:text-gray-600"
+                  className="w-full bg-[#181822] border border-gray-700/80 focus:border-[#ff5400] focus:ring-1 focus:ring-[#ff5400] text-white text-sm rounded-xl pl-10 pr-10 py-2.5 outline-none transition-all placeholder:text-gray-600"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3 top-3 text-gray-500 hover:text-gray-300 transition-colors focus:outline-none cursor-pointer"
+                  title={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                  aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
           )}

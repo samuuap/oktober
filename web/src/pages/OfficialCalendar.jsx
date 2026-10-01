@@ -5,7 +5,7 @@ import { Lock, Loader, Skull, Calendar, Sparkles, Star, SlidersHorizontal, Arrow
 import { ChallengeModal } from '../components/ChallengeModal'
 import { CountdownWidget } from '../components/CountdownWidget'
 import { challengeTypeForDay, CHALLENGE_META } from '../lib/challenges'
-import { autoRevealedThrough } from '../lib/calendarDates'
+import { autoRevealedThrough, todayInMadrid } from '../lib/calendarDates'
 
 const MOVIE_FIELDS =
   'tmdb_id, title, original_title, overview, poster_path, backdrop_path, year, runtime, vote_average, vote_count, genres, characteristics, watch_providers'
@@ -21,7 +21,7 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
   const [activeDay, setActiveDay] = useState(null)
   const [migrationMissing, setMigrationMissing] = useState(false)
 
-  // Las puertas de los días ya pasados se abren solas, para todo el mundo y
+  // Las puertas de los días que ya han llegado se abren solas, para todo el mundo y
   // sin prueba. Se recalcula cada minuto para que el cambio de día entre
   // aunque la pestaña lleve horas abierta.
   const [revealedThrough, setRevealedThrough] = useState(0)
@@ -252,8 +252,8 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
           </h1>
 
           <p className="text-sm sm:text-base text-gray-400 max-w-xl mx-auto">
-            31 puertas, una por cada noche de octubre de {year}. Cada una se abre sola cuando su
-            día ha pasado — o antes de tiempo, si superas la prueba que la guarda.
+            31 puertas, una por cada noche de octubre de {year}. Cada una se abre sola el día
+            que le corresponde — o antes de tiempo, si superas la prueba que la guarda.
           </p>
 
           {total > 0 && (
@@ -335,17 +335,32 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4">
-            {days.map((day) => (
-              <DayDoor
-                key={day.day_number}
-                day={day}
-                isUnlocked={isOpen(day.day_number)}
-                byDate={!unlocked.has(day.day_number) && day.day_number <= revealedThrough}
-                movie={revealedMovies[day.tmdb_id]}
-                year={year}
-                onOpen={() => openDay(day)}
-              />
-            ))}
+            {(() => {
+              const today = todayInMadrid()
+              const isCurrentMonth = today.month === 10 && today.year === year
+
+              return days.map((day) => {
+                const isToday = isCurrentMonth && day.day_number === today.day
+                const isPast = isCurrentMonth
+                  ? day.day_number < today.day
+                  : (today.year > year || (today.year === year && today.month > 10))
+                const isEarly = unlocked.has(day.day_number) && (!isCurrentMonth || day.day_number > today.day)
+
+                return (
+                  <DayDoor
+                    key={day.day_number}
+                    day={day}
+                    isUnlocked={isOpen(day.day_number)}
+                    isToday={isToday}
+                    isPast={isPast}
+                    isEarly={isEarly}
+                    movie={revealedMovies[day.tmdb_id]}
+                    year={year}
+                    onOpen={() => openDay(day)}
+                  />
+                )
+              })
+            })()}
           </div>
         )}
       </div>
@@ -367,14 +382,16 @@ export const OfficialCalendar = ({ movies, onSelectMovie, onRequireAuth, onOpenO
 // Puerta de un día
 // ------------------------------------------------------------
 
-const DayDoor = ({ day, isUnlocked, byDate, movie, year, onOpen }) => {
+const DayDoor = ({ day, isUnlocked, isToday, isPast, isEarly, movie, year, onOpen }) => {
   const meta = CHALLENGE_META[challengeTypeForDay(day.day_number, year)]
 
   // Día superado pero sin película asignada en el calendario editorial:
   // sin esto volvería a pintarse como sellado y parecería que se cerró solo.
   if (isUnlocked && !movie) {
     return (
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden border-2 border-emerald-700/50 bg-[#101016] flex flex-col items-center justify-center gap-2 p-3 text-center">
+      <div className={`relative aspect-[2/3] rounded-xl overflow-hidden border-2 bg-[#101016] flex flex-col items-center justify-center gap-2 p-3 text-center ${
+        isToday ? 'border-[#ff5400]/70' : 'border-emerald-700/50'
+      }`}>
         <div className="absolute top-2 left-2 bg-black/80 px-2 py-0.5 rounded-lg border border-emerald-700/60">
           <span className="text-xs font-black text-emerald-500">{day.day_number}</span>
         </div>
@@ -390,9 +407,15 @@ const DayDoor = ({ day, isUnlocked, byDate, movie, year, onOpen }) => {
     return (
       <button
         onClick={onOpen}
-        className="group relative aspect-[2/3] rounded-xl overflow-hidden border-2 border-gray-800 hover:border-[#ff5400] transition-all hover:scale-[1.04] cursor-pointer text-left"
+        className={`group relative aspect-[2/3] rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.04] cursor-pointer text-left ${
+          isToday
+            ? 'border-[#ff5400] shadow-[0_0_15px_rgba(255,84,0,0.3)] ring-1 ring-[#ff5400]/50'
+            : 'border-gray-800 hover:border-[#ff5400]'
+        }`}
       >
-        <div className="absolute top-2 left-2 z-20 bg-black/80 backdrop-blur-sm px-2 py-0.5 rounded-lg border border-[#ff5400]/60">
+        <div className={`absolute top-2 left-2 z-20 bg-black/80 backdrop-blur-sm px-2 py-0.5 rounded-lg border ${
+          isToday ? 'border-[#ff5400]' : 'border-[#ff5400]/60'
+        }`}>
           <span className="text-xs font-black text-[#ff5400]">{day.day_number}</span>
         </div>
 
@@ -419,7 +442,17 @@ const DayDoor = ({ day, isUnlocked, byDate, movie, year, onOpen }) => {
         <div className="absolute bottom-0 inset-x-0 p-2.5 space-y-1">
           {/* En una sola fila: apilados empujaban el título sobre el póster. */}
           <div className="flex flex-wrap items-center gap-1">
-            {byDate && (
+            {isToday && (
+              <span className="bg-[#ff5400] text-black text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shadow-[0_0_8px_rgba(255,84,0,0.6)]">
+                Hoy
+              </span>
+            )}
+            {isEarly && (
+              <span className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                Reto superado
+              </span>
+            )}
+            {!isToday && !isEarly && isPast && (
               <span className="bg-black/70 border border-gray-700 text-gray-400 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded">
                 Ya pasó
               </span>
